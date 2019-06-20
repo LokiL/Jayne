@@ -153,7 +153,7 @@ def db_service_init_tech_tables():
         topmsg integer,
         topweeklymsg integer,
         topdailymsg integer,
-        topmonthmsg integer,
+        topmonthlymsg integer,
         eww integer)""")
     cursor.execute(
         """CREATE TABLE IF NOT EXISTS mod_comm_usage (
@@ -581,7 +581,7 @@ def db_stat_update_user_command_count(cid, uid, command_type):
     cursor = conn.cursor()
     table = ''
     if command_type in ['report', 'userinfo', 'me', 'eww', 'slap', 'usuka', 'wtfisgoingon', 'badumtss', 'topmsg',
-                        'topweeklymsg', 'topdailymsg', 'topmonthmsg', 'eww']:
+                        'topweeklymsg', 'topdailymsg', 'topmonthlymsg', 'eww']:
         table = 'comm_usage'
     if command_type in ['warn', 'mute', 'ban', 'pin', 'chmod', 'resync']:
         table = 'mod_comm_usage'

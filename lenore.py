@@ -422,8 +422,8 @@ def all_topdailymsg(message):
         lenore.send_message(message.chat.id, e)
 
 
-@lenore.message_handler(commands=['topmonthmsg'])
-def all_topmonthmsg(message):
+@lenore.message_handler(commands=['topmonthlymsg'])
+def all_topmonthlymsg(message):
     try:
         cid = message.chat.id
         uid = message.from_user.id
@@ -432,7 +432,7 @@ def all_topmonthmsg(message):
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that.")
         else:
-            db_func.db_stat_update_user_command_count(cid, uid, 'topmonthmsg')
+            db_func.db_stat_update_user_command_count(cid, uid, 'topmonthlymsg')
             output = 'Топ-5 флудеров группы за месяц:\n'
             for data in db_func.db_stat_get_top_flooders(cid, duration='m'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
