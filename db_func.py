@@ -547,10 +547,10 @@ def db_stat_update_user_message_count(cid, uid, message_type='msg'):
     """.format('chat_' + str(cid)[1:] + '_users_info', uid, message_type)
     cursor.execute(sql)
     data = cursor.fetchone()
-    current_a_msg_count = data[0]+1
-    current_m_msg_count = data[1]+1
-    current_w_msg_count = data[3]+1
-    current_d_msg_count = data[4]+1
+    current_a_msg_count = int(data[0])+1
+    current_m_msg_count = int(data[1])+1
+    current_w_msg_count = int(data[2])+1
+    current_d_msg_count = int(data[3])+1
     sql = """
     UPDATE {0}
     SET a_{1} = '{a_msg_count}',
