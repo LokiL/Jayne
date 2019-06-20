@@ -1,0 +1,10 @@
+__pycache__
+*.db
+.idea/
+*.pyo
+*.pyc
+Thumbs*
+.DS_Store
+lenore
+lenore.pub
+proxy_adress.py
