@@ -153,7 +153,8 @@ def db_service_init_tech_tables():
         topmsg integer,
         topweeklymsg integer,
         topdailymsg integer,
-        topmonthmsg integer)""")
+        topmonthmsg integer,
+        eww integer)""")
     cursor.execute(
         """CREATE TABLE IF NOT EXISTS mod_comm_usage (
         cid integer,
@@ -237,12 +238,14 @@ def db_stat_add_new_user(cid, uid, username):
     '{2}','{3}','{4}',
     '{5}','{6}','{7}', 
     '{8}','{9}','{10}', 
-    '{11}','{12}','{13}')""".
+    '{11}','{12}','{13}', 
+    '{14}')""".
                    format(str(cid)[1:], uid,
                           0, 0, 0,
                           0, 0, 0,
                           0, 0, 0,
-                          0, 0, 0))
+                          0, 0, 0,
+                          0))
 
     cursor.execute("""INSERT INTO mod_comm_usage VALUES (
     '{0}', '{1}', 
@@ -578,7 +581,7 @@ def db_stat_update_user_command_count(cid, uid, command_type):
     cursor = conn.cursor()
     table = ''
     if command_type in ['report', 'userinfo', 'me', 'eww', 'slap', 'usuka', 'wtfisgoingon', 'badumtss', 'topmsg',
-                        'topweeklymsg', 'topdailymsg', 'topmonthmsg']:
+                        'topweeklymsg', 'topdailymsg', 'topmonthmsg', 'eww']:
         table = 'comm_usage'
     if command_type in ['warn', 'mute', 'ban', 'pin', 'chmod', 'resync']:
         table = 'mod_comm_usage'
