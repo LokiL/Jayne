@@ -547,15 +547,23 @@ def db_stat_update_user_message_count(cid, uid, message_type='msg'):
     """.format('chat_' + str(cid)[1:] + '_users_info', uid, message_type)
     cursor.execute(sql)
     data = cursor.fetchone()
+    current_a_msg_count = data[0]+1
+    current_m_msg_count = data[1]+1
+    current_w_msg_count = data[3]+1
+    current_d_msg_count = data[4]+1
     sql = """
     UPDATE {0}
-    SET a_{2} = '{1}',
-    m_{2} = '{1}',
-    w_{2} = '{1}',
-    d_{2} = '{1}',
-    last_activity = '{4}'
+    SET a_{1} = '{a_msg_count}',
+    m_{1} = '{m_msg_count}',
+    w_{1} = '{w_msg_count}',
+    d_{1} = '{d_msg_count}',
+    last_activity = '{2}'
     WHERE uid = '{3}'
-    """.format('chat_' + str(cid)[1:] + '_users_info', data[0] + 1, message_type, uid, int(time.time()))
+    """.format('chat_' + str(cid)[1:] + '_users_info', message_type, int(time.time()), uid,
+               a_msg_count = current_a_msg_count,
+               m_msg_count = current_m_msg_count,
+               w_msg_count = current_w_msg_count,
+               d_msg_count = current_d_msg_count)
     cursor.execute(sql)
     conn.commit()
 
@@ -770,6 +778,7 @@ def db_transfer(cid):
         rights = '{2}',
         a_msg = '{3}', 
         w_msg = '{4}',
+        m_msg = '{4}',
         warn_count = '{5}'        
         WHERE uid = '{6}'
         """.format(cid, date_added, new_rights, message_count, weekly_message_count, warn_count, uid))
