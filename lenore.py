@@ -599,7 +599,7 @@ def link_furrydevnull(message):
     try:
         if message.chat.id not in var_config.restricted_chats_for_links:
             lenore.reply_to(message, 'Ссылка на чат русскоязычных фуррей-программистов "furry > /dev/null": \n'
-                                     'https://t.me/furrydevnull')
+                                     'https://t.me/joinchat/AX0jxE03wjga3qUDUnQ-Aw')
         else:
             lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that.")
     except Exception as e:
