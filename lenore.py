@@ -743,7 +743,7 @@ def mod_warn(message):
                         warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
                                        "Текущее количество предупреждений: {2}".format(
                             warned_user_naming, reason, current_warn_count)
-                        info_message_text = "`{0}` выдал варн пользователю {1} в чате {2} ({3})\n" \
+                        info_message_text = "{0} выдал варн пользователю {1} в чате {2} ({3})\n" \
                                             "Причина: {4}\nТекущее количество предупреждений: {5}".format(
                             info_get_current_username(cid, uid),
                             warned_user_naming,
@@ -755,7 +755,7 @@ def mod_warn(message):
                             lenore.reply_to(message.reply_to_message, warn_message)
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), info_message_text,
-                                                disable_web_page_preview=True, parse_mode='Markdown')
+                                                disable_web_page_preview=True)
     except Exception as e:
         lenore.reply_to(message, e)
 
@@ -926,7 +926,7 @@ def mod_mute(message):
                             else:
                                 chat_link = 't.me/' + message.chat.username
 
-                            forward_message_text = "`{0}` наложил молчанку на `{1}` до {2} в чате {3} ({4})\nПричина: {5}".format(
+                            forward_message_text = "{0} наложил молчанку на {1} до {2} в чате {3} ({4})\nПричина: {5}".format(
                                 info_get_current_username(cid, uid),
                                 muted_user_naming,
                                 mute_ending_date,
@@ -936,7 +936,7 @@ def mod_mute(message):
 
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
-                                                disable_web_page_preview=True, parse_mode='Markdown')
+                                                disable_web_page_preview=True)
     except Exception as e:
         lenore.reply_to(message, e)
 
@@ -984,14 +984,14 @@ def mod_ban(message):
                                 chat_link = '(приватный чат, ссылка недоступна)'
                             else:
                                 chat_link = 't.me/' + message.chat.username
-                            forward_message_text = "`{0}` забанил `{1}` в чате {2} ({3})\nПричина: {4}".format(
+                            forward_message_text = "{0} забанил {1} в чате {2} ({3})\nПричина: {4}".format(
                                 info_get_current_username(cid, uid),
                                 kicked_user_naming,
                                 message.chat.title,
                                 chat_link, kick_reason)
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
-                                                disable_web_page_preview=True, parse_mode='Markdown')
+                                                disable_web_page_preview=True)
     except Exception as e:
         lenore.reply_to(message, e)
 
