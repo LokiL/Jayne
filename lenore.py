@@ -1244,7 +1244,10 @@ def tech_echo_all(message):
             text_message = ' '.join(spl[1:])
             for foo in db_func.db_tech_get_all_chat_tables_list():
                 bar = str(foo).split('_')
-                lenore.send_message(int('-' + bar[1]), text_message)
+                try:
+                    lenore.send_message(int('-' + bar[1]), text_message)
+                except Exception as e:
+                    lenore.reply_to(message, e)
     except Exception as e:
         lenore.reply_to(message, e)
 
