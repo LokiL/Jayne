@@ -1139,7 +1139,6 @@ def mod_pin(message):
                 ruid = message.reply_to_message.from_user.id
                 if not db_func.db_service_check_user_exists(cid, ruid):
                     db_func.db_stat_add_new_user(cid, ruid, info_get_current_username(cid, ruid))
-                lenore.delete_message(cid, message.message_id)
                 lenore.pin_chat_message(cid, message.reply_to_message.message_id)
                 db_func.db_stat_update_user_command_count(cid, uid, 'pin')
 
