@@ -1456,6 +1456,8 @@ def service_delete_old_bot_messages():
                     db_func.db_service_delete_old_bot_message(row[0])
                     lenore.delete_message(row[1], row[2])
                 except Exception as e:
+                    error = '{0}\nservice_delete_old_bot_messages error, cid: {1}'
+                    lenore.send_message(var_config.master_id, error.format(e, row[1]))
                     print(e)
         time.sleep(5)
 
@@ -1464,6 +1466,7 @@ def service_reset_message_counters():
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
+            lenore.send_message(var_config.master_id, '{0}\nservice_reset_message_counters error'.format(e))
             print(e)
         time.sleep(30)
 
