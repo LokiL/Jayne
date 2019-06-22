@@ -30,6 +30,7 @@ if len(sys.argv) >= 3:
 bot_token = sys.argv[1]  # Lenore token
 lenore = telebot.TeleBot(bot_token)
 
+
 def service_send_report_to_master(message, e):
     try:
         text = message.text
@@ -45,6 +46,7 @@ def service_send_report_to_master(message, e):
     except Exception as e:
         print(e)
 
+
 if db_func.db_service_check_restart_trigger_table_exists():
     try:
         if db_func.db_service_get_restart_trigger()[0] == 1:
@@ -55,6 +57,7 @@ if db_func.db_service_check_restart_trigger_table_exists():
             db_func.db_service_restart_daemon_trigger(cid, mid)
     except Exception as e:
         lenore.send_message(cid, e)
+
 
 def service_init_table_for_chat(cid, uid, username):
     if not db_func.db_service_check_chat_table_exists(cid):
@@ -384,11 +387,11 @@ def all_me_action(message):
             me_action_text = ''
             if len(spl) == 1:
                 me_action_text += user_from + ' делает что-то подозрительное...'
-                db_func.db_service_add_bot_message(cid, lenore.send_message(cid, me_action_text))
+                lenore.send_message(cid, me_action_text)
             else:
                 user_action = ' '.join(spl[1:])
                 me_action_text += user_from + ' ' + user_action
-                db_func.db_service_add_bot_message(cid, lenore.send_message(cid, me_action_text))
+                lenore.send_message(cid, me_action_text)
 
 
     except Exception as e:
@@ -413,7 +416,7 @@ def all_topmsg(message):
             for data in db_func.db_stat_get_top_flooders(cid):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
@@ -436,7 +439,7 @@ def all_topweeklymsg(message):
             for data in db_func.db_stat_get_top_flooders(cid, duration='w'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
@@ -459,7 +462,7 @@ def all_topdailymsg(message):
             for data in db_func.db_stat_get_top_flooders(cid, duration='d'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
         service_send_report_to_master(message, e)
@@ -481,7 +484,7 @@ def all_topmonthlymsg(message):
             for data in db_func.db_stat_get_top_flooders(cid, duration='m'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
         service_send_report_to_master(message, e)
@@ -885,35 +888,35 @@ def mod_chmod(message):
                                 user_rights_readable_new.append('✅')
                             else:
                                 user_rights_readable_new.append('❌')
-                                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
-                                                                                        "Права успешно изменены для {0}:\n" \
-                                                                                        "{1} > {2} - общие действия\n" \
-                                                                                        "{3} > {4} - варны\n" \
-                                                                                        "{5} > {6} - муты\n" \
-                                                                                        "{7} > {8} - баны\n" \
-                                                                                        "{9} > {10} - пины\n" \
-                                                                                        "{11} > {12} - изменение доступов\n" \
-                                                                                        "{13} > {14} - перезапуск бота\n"
-                                                                                        "{15} > {16} - управление антиботом".format(
-                                                                                            info_get_current_username(
-                                                                                                cid, ruid),
-                                                                                            user_rights_readable_old[0],
-                                                                                            user_rights_readable_new[0],
-                                                                                            user_rights_readable_old[1],
-                                                                                            user_rights_readable_new[1],
-                                                                                            user_rights_readable_old[2],
-                                                                                            user_rights_readable_new[2],
-                                                                                            user_rights_readable_old[3],
-                                                                                            user_rights_readable_new[3],
-                                                                                            user_rights_readable_old[4],
-                                                                                            user_rights_readable_new[4],
-                                                                                            user_rights_readable_old[5],
-                                                                                            user_rights_readable_new[5],
-                                                                                            user_rights_readable_old[6],
-                                                                                            user_rights_readable_new[6],
-                                                                                            user_rights_readable_old[7],
-                                                                                            user_rights_readable_new[
-                                                                                                7])))
+                            db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                                                                                    "Права успешно изменены для {0}:\n" \
+                                                                                    "{1} > {2} - общие действия\n" \
+                                                                                    "{3} > {4} - варны\n" \
+                                                                                    "{5} > {6} - муты\n" \
+                                                                                    "{7} > {8} - баны\n" \
+                                                                                    "{9} > {10} - пины\n" \
+                                                                                    "{11} > {12} - изменение доступов\n" \
+                                                                                    "{13} > {14} - перезапуск бота\n"
+                                                                                    "{15} > {16} - управление антиботом".format(
+                                                                                        info_get_current_username(
+                                                                                            cid, ruid),
+                                                                                        user_rights_readable_old[0],
+                                                                                        user_rights_readable_new[0],
+                                                                                        user_rights_readable_old[1],
+                                                                                        user_rights_readable_new[1],
+                                                                                        user_rights_readable_old[2],
+                                                                                        user_rights_readable_new[2],
+                                                                                        user_rights_readable_old[3],
+                                                                                        user_rights_readable_new[3],
+                                                                                        user_rights_readable_old[4],
+                                                                                        user_rights_readable_new[4],
+                                                                                        user_rights_readable_old[5],
+                                                                                        user_rights_readable_new[5],
+                                                                                        user_rights_readable_old[6],
+                                                                                        user_rights_readable_new[6],
+                                                                                        user_rights_readable_old[7],
+                                                                                        user_rights_readable_new[
+                                                                                            7])))
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
@@ -1288,28 +1291,30 @@ def mod_unpin(message):
 ### Технические команды
 ###
 
-@lenore.message_handler(commands=['resync'])
-def tech_resync(message):
-    try:
-        cid = message.chat.id
-        mid = message.message_id
-        uid = message.from_user.id
-        if not db_func.db_service_check_user_exists(cid, uid):
-            db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
-
-        if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
-            db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
-        else:
-            db_func.db_stat_update_user_command_count(cid, uid, 'resync')
-            db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
-            db_func.db_service_restart_daemon_trigger(cid, mid)
-            db_func.db_service_database_conn_close()
-            os.kill(os.getpid(), signal.SIGINT)
-    except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+# @lenore.message_handler(commands=['resync'])
+# def tech_resync(message):
+#     try:
+#         cid = message.chat.id
+#         mid = message.message_id
+#         uid = message.from_user.id
+#         if not db_func.db_service_check_user_exists(cid, uid):
+#             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
+#
+#         if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
+#             db_func.db_service_add_bot_message(cid,
+#                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+#         else:
+#             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
+#             db_func.db_service_add_bot_message(cid,
+#                                                lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
+#             db_func.db_service_restart_daemon_trigger(cid, mid)
+#             DeleteOldJayneMessages.terminate()
+#             ResetMessageCounters.terminate()
+#             db_func.db_service_database_conn_close()
+#             os.kill(os.getpid(), signal.SIGINT)
+#     except Exception as e:
+#         lenore.reply_to(message, e)
+#         service_send_report_to_master(message, e)
 
 
 ###
@@ -1371,8 +1376,9 @@ def tech_echo_all(message):
                     try:
                         foo = lenore.send_message(int('-' + bar[1]), text_message)
                         lenore.send_message(var_config.master_id, '{3}\n\nОтправлено в {0}, \n'
-                                                 'линк: {1}\n'
-                                                 'CID: -{2}'.format(foo.chat.title, foo.chat.username, bar[1], text_message))
+                                                                  'линк: {1}\n'
+                                                                  'CID: -{2}'.format(foo.chat.title, foo.chat.username,
+                                                                                     bar[1], text_message))
 
                     except Exception as e:
                         lenore.reply_to(message, e)
@@ -1383,9 +1389,6 @@ def tech_echo_all(message):
         service_send_report_to_master(message, e)
 
 
-
-
-
 @lenore.message_handler(commands=['init_new_alter'])
 def tech_init_new_alter(message):
     try:
@@ -1393,7 +1396,6 @@ def tech_init_new_alter(message):
             lenore.reply_to(message, db_func.add_mid_column_into_bot_messages_once())
     except Exception as e:
         lenore.reply_to(message, e)
-
 
 
 ###
@@ -1456,17 +1458,15 @@ def service_delete_old_bot_messages():
                     db_func.db_service_delete_old_bot_message(row[0])
                     lenore.delete_message(row[1], row[2])
                 except Exception as e:
-                    error = '{0}\nservice_delete_old_bot_messages error, cid: {1}'
-                    lenore.send_message(var_config.master_id, error.format(e, row[1]))
                     print(e)
         time.sleep(5)
+
 
 def service_reset_message_counters():
     while True:
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
-            lenore.send_message(var_config.master_id, '{0}\nservice_reset_message_counters error'.format(e))
             print(e)
         time.sleep(30)
 
@@ -1477,7 +1477,6 @@ if __name__ == '__main__':
     DeleteOldJayneMessages.start()
     ResetMessageCounters = Process(target=service_reset_message_counters, args=())
     ResetMessageCounters.start()
-
 
     while True:
         try:
