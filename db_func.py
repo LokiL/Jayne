@@ -106,7 +106,42 @@ def db_service_create_chat_table(cid):
         ban_count integer,
         achievements text,
         titles text)""".format('chat_' + str(cid)[1:] + '_users_info'))
+
+    # cursor.execute(
+    #     """CREATE TABLE IF NOT EXISTS {0}
+    #     (cid integer,
+    #     welcome_msg_default text,
+    #     welcome_msg_approved text,
+    #     welcome_msg_returning text,
+    #     voicemessages_restrict integer,
+    #     voicemessages_limit integer,
+    #     command_cooldown integer,
+    #     warn_limit_enabled integer,
+    #     warn_limit_count integer,
+    #     automute_duration integer
+    #     )""".format('chat_' + str(cid)[1:] + '_paramaters'))
     conn.commit()
+
+
+# def db_service_create_chat_parameters_table(cid):
+#     global conn
+#     cursor = conn.cursor()
+#     cursor.execute(
+#         """CREATE TABLE IF NOT EXISTS {0}
+#         (cid integer,
+#         welcome_msg_default text,
+#         welcome_msg_approved text,
+#         welcome_msg_returning text,
+#         voicemessages_restrict integer,
+#         voicemessages_limit integer,
+#         command_cooldown integer,
+#         warn_limit_enabled integer,
+#         warn_limit_count integer,
+#         automute_duration integer
+#         )""".format('chat_' + str(cid)[1:] + '_paramaters'))
+#
+#     conn.commit()
+
 
 
 def db_service_init_tech_tables():
@@ -137,7 +172,8 @@ def db_service_init_tech_tables():
     cursor.execute(
         """CREATE TABLE IF NOT EXISTS bot_messages (
         cid integer,
-        date integer)""")
+        date integer,
+        mid integer)""")
     cursor.execute(
         """CREATE TABLE IF NOT EXISTS comm_usage (
         cid integer,
@@ -186,9 +222,7 @@ def db_service_init_tech_tables():
     if not cursor.fetchone()[0] == 1:
         cursor.execute("""CREATE TABLE IF NOT EXISTS restart_daemon_check(flag integer, cid integer, mid integer)""")
         cursor.execute("""INSERT INTO restart_daemon_check VALUES ('0', '0', '0')""")
-
     conn.commit()
-
 
 def db_service_check_chat_table_exists(cid):
     global conn
@@ -713,91 +747,6 @@ def db_mod_set_antibot_welcome_messages(cid, rm=False,
         else:
             return False
 
-
-#########################################################################################
-
-def db_service_add_chat_forward():
-    pass
-
-
-# def db_service_get_user_id_by_username(cid, username):
-#     global conn
-#     cursor = conn.cursor()
-#     table_for_use = 'chat_' + str(cid)[1:]
-#     sql = """
-#         SELECT uid
-#         FROM '{0}'
-#         WHERE username = '{1}'
-#         """.format(table_for_use, username)
-#     cursor.execute(sql)
-#     data = cursor.fetchone()
-#
-#     if data is not None:
-#         return data[0]
-#     else:
-#         return False
-
-
-###################
-
-def db_tech_get_all_old_chat_tables_list():
-    global conn
-    cursor = conn.cursor()
-    cursor.execute("""SELECT name FROM sqlite_master WHERE type='table'""")
-    data = cursor.fetchall()
-
-    table_list = []
-    for table in data:
-        if ('chat_' in table[0]) and not ('users_info' in table[0]):
-            table_list += table
-    return table_list
-
-
-def db_transfer(cid):
-    global conn
-    cursor = conn.cursor()
-    print('chat_' + cid + ' > ' + 'chat_' + cid + '_users_info started')
-    cursor.execute("""
-    SELECT * FROM {0}""".format('chat_' + cid))
-    data = cursor.fetchall()
-    old_format_data = data
-    for foo in old_format_data:
-        uid = foo[0]
-        date_added = foo[2]
-        message_count = foo[3]
-        warn_count = foo[4]
-        weekly_message_count = foo[15]
-        if uid == var_config.master_id:
-            new_rights = 11111111
-        else:
-            new_rights = int(
-                str(foo[8]) + str(foo[10]) + str(foo[11]) + str(foo[12]) + str(foo[13]) + str(foo[14]) + '0' + '0')
-        # actions, warn, mute, ban, pin, chmod, resync, set_antibot
-        db_stat_add_new_user('-' + cid, foo[0], foo[1])
-        cursor.execute("""
-        UPDATE chat_{0}_users_info
-        SET
-        added = '{1}',
-        rights = '{2}',
-        a_msg = '{3}', 
-        w_msg = '{4}',
-        m_msg = '{4}',
-        warn_count = '{5}'        
-        WHERE uid = '{6}'
-        """.format(cid, date_added, new_rights, message_count, weekly_message_count, warn_count, uid))
-    print('chat_' + cid + ' > ' + 'chat_' + cid + ' users_info processed')
-    cursor.execute("""DROP TABLE chat_{0}""".format(cid))
-    print('chat_' + cid + ' dropped')
-    conn.commit()
-
-
-def db_drop_tech():
-    global conn
-    cursor = conn.cursor()
-    cursor.execute("""DROP TABLE tech_message_count_reset_date""")
-    conn.commit()
-
-
 def db_add_welcomes():
     global conn
     cursor = conn.cursor()
@@ -842,3 +791,127 @@ def db_add_welcomes():
                     '{3}')
                     """.format(str(chat[0])[1:], chat[1], chat[2], chat[3]))
     conn.commit()
+
+def db_service_add_bot_message(cid, message):
+    global conn
+    cursor = conn.cursor()
+    cursor.execute("""
+    INSERT INTO bot_messages VALUES ('{0}', '{1}', '{2}')
+    """.format(cid, int(time.time()), message.message_id))
+    conn.commit()
+
+def db_service_get_old_bot_messages(bot_message_swelling_time):
+    global conn
+    cursor = conn.cursor()
+    time_diff = int(time.time()) - bot_message_swelling_time
+    cursor.execute(
+    """SELECT ROWID, cid, mid FROM bot_messages WHERE date < '{0}'""".format(time_diff))
+    data = cursor.fetchall()
+    if data is not None:
+        return data
+    else:
+        return False
+
+def db_service_delete_old_bot_message(rowid):
+    global conn
+    cursor = conn.cursor()
+    cursor.execute(
+        """DELETE FROM bot_messages
+                WHERE ROWID = {0}""".format(rowid))
+    conn.commit()
+
+def add_mid_column_into_bot_messages_once():
+    global conn
+    cursor = conn.cursor()
+    cursor.execute("""
+    ALTER TABLE bot_messages ADD COLUMN mid integer
+    """)
+    conn.commit()
+    return 'Created'
+
+
+#########################################################################################
+
+def db_service_add_chat_forward():
+    pass
+
+
+# def db_service_get_user_id_by_username(cid, username):
+#     global conn
+#     cursor = conn.cursor()
+#     table_for_use = 'chat_' + str(cid)[1:]
+#     sql = """
+#         SELECT uid
+#         FROM '{0}'
+#         WHERE username = '{1}'
+#         """.format(table_for_use, username)
+#     cursor.execute(sql)
+#     data = cursor.fetchone()
+#
+#     if data is not None:
+#         return data[0]
+#     else:
+#         return False
+
+
+###################
+#
+# def db_tech_get_all_old_chat_tables_list():
+#     global conn
+#     cursor = conn.cursor()
+#     cursor.execute("""SELECT name FROM sqlite_master WHERE type='table'""")
+#     data = cursor.fetchall()
+#
+#     table_list = []
+#     for table in data:
+#         if ('chat_' in table[0]) and not ('users_info' in table[0]):
+#             table_list += table
+#     return table_list
+
+
+# def db_transfer(cid):
+#     global conn
+#     cursor = conn.cursor()
+#     print('chat_' + cid + ' > ' + 'chat_' + cid + '_users_info started')
+#     cursor.execute("""
+#     SELECT * FROM {0}""".format('chat_' + cid))
+#     data = cursor.fetchall()
+#     old_format_data = data
+#     for foo in old_format_data:
+#         uid = foo[0]
+#         date_added = foo[2]
+#         message_count = foo[3]
+#         warn_count = foo[4]
+#         weekly_message_count = foo[15]
+#         if uid == var_config.master_id:
+#             new_rights = 11111111
+#         else:
+#             new_rights = int(
+#                 str(foo[8]) + str(foo[10]) + str(foo[11]) + str(foo[12]) + str(foo[13]) + str(foo[14]) + '0' + '0')
+#         # actions, warn, mute, ban, pin, chmod, resync, set_antibot
+#         db_stat_add_new_user('-' + cid, foo[0], foo[1])
+#         cursor.execute("""
+#         UPDATE chat_{0}_users_info
+#         SET
+#         added = '{1}',
+#         rights = '{2}',
+#         a_msg = '{3}',
+#         w_msg = '{4}',
+#         m_msg = '{4}',
+#         warn_count = '{5}'
+#         WHERE uid = '{6}'
+#         """.format(cid, date_added, new_rights, message_count, weekly_message_count, warn_count, uid))
+#     print('chat_' + cid + ' > ' + 'chat_' + cid + ' users_info processed')
+#     cursor.execute("""DROP TABLE chat_{0}""".format(cid))
+#     print('chat_' + cid + ' dropped')
+#     conn.commit()
+#
+#
+# def db_drop_tech():
+#     global conn
+#     cursor = conn.cursor()
+#     cursor.execute("""DROP TABLE tech_message_count_reset_date""")
+#     conn.commit()
+
+
+
