@@ -1472,6 +1472,8 @@ if __name__ == '__main__':
     freeze_support()
     DeleteOldJayneMessages = Process(target=service_delete_old_bot_messages, args=())
     DeleteOldJayneMessages.start()
+    ResetMessageCounters = Process(target=service_reset_message_counters, args=())
+    ResetMessageCounters.start()
 
     while True:
         try:
