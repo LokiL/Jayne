@@ -656,8 +656,8 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     cursor.execute("""SELECT reset_time_week FROM tech_message_count_reset_date""")
     data = cursor.fetchone()
     if current_time - int(data[0]) > 604800:
-        prev_monday_date_unixtime = time.mktime(
-            today + datetime.timedelta(-today.weekday(), weeks=0).timetuple()) + 10800
+        time_offset = today + datetime.timedelta(-today.weekday(), weeks=0)
+        prev_monday_date_unixtime = time.mktime(time_offset.timetuple()) + 10800
         chats_for_work = db_tech_get_all_chat_tables_list()
         cursor.execute(
             """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(prev_monday_date_unixtime))
