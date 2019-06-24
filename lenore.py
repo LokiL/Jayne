@@ -1317,13 +1317,12 @@ def tech_resync(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             global restart_flag
-            restart_flag = True
             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
+                                               lenore.reply_to(message, 'Cинхронизация кода. Это займет несколько секунд.'))
             db_func.db_service_restart_daemon_trigger(cid, mid)
-            DeleteOldJayneMessages.terminate()
-            ResetMessageCounters.terminate()
+            restart_flag = True
+            time.sleep(5)
             db_func.db_service_database_conn_close()
             os.kill(os.getpid(), signal.SIGINT)
     except Exception as e:
