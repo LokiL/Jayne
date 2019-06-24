@@ -835,7 +835,7 @@ def mod_warn(message):
                         warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
                                        "Текущее количество предупреждений: {2}".format(
                             warned_user_naming, reason, current_warn_count)
-                        info_message_text = "{0} выдал варн пользователю {1} в чате {2} ({3})\n " \
+                        info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n " \
                                             "Причина: {4}\n" \
                                             "Текущее количество предупреждений: {5}".format(
                             info_get_current_username(cid, uid),
