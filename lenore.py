@@ -1,33 +1,39 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding=utf-8
 import os
 import re
 import signal
 import sys
 import time
+import argparse
 from datetime import datetime
 from multiprocessing import Process, freeze_support
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot import apihelper
 
 import db_func
 import var_config
 
-if len(sys.argv) < 2:
-    print("Usage:")
-    print("  lenore.py <bot_token> [</path/to/db.sqlite>]")
-    exit(1)
+parser = argparse.ArgumentParser(add_help=True, description='Jayne Bot for Telegram')
+parser.add_argument('--token', action='store', help='Authentication token [required]', required=True)
+parser.add_argument('--db-file', action='store', help='Path to SQLite database file', required=True)
+parser.add_argument('--proxy', action='store', help='HTTP(S) Proxy in format [login:password@host:port]')
+args = parser.parse_args()
 
-if len(sys.argv) >= 3:
-    db_func.db_service_database_path(sys.argv[2])
-    db_func.db_service_database_conn_open()
-    db_func.db_service_init_tech_tables()
+db_func.db_service_database_path(args.db_file)
+db_func.db_service_database_conn_open()
+db_func.db_service_init_tech_tables()
 
-###
-### Переменные
-###
-bot_token = sys.argv[1]  # Lenore token
+if args.proxy:
+    apihelper.proxy = {"http" : "http://%s" % args.proxy,
+                       "https" : "https://%s" % args.proxy}
+
+#
+# Переменные
+#
+bot_token = args.token  # Lenore token
 lenore = telebot.TeleBot(bot_token)
 
 restart_flag = False
