@@ -835,7 +835,8 @@ def mod_warn(message):
                             db_func.db_stat_add_new_user(cid, ruid, warned_user_naming)
                         current_warn_count = db_func.db_mod_increase_warn_count_for_user(cid, ruid, uid, reason)
                         warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
-                                       "Текущее количество предупреждений: {2}".format(
+                                       "Текущее количество предупреждений: {2}\n" \
+                                       "Варн протухнет через неделю.".format(
                             warned_user_naming, reason, current_warn_count)
                         info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n " \
                                             "Причина: {4}\n" \
