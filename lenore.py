@@ -382,7 +382,7 @@ def all_me_action(message):
             db_func.db_stat_update_user_command_count(cid, uid, 'me')
 
             spl = message.text.split(' ')
-            # lenore.delete_message(cid, message.message_id)
+            lenore.delete_message(cid, message.message_id)
             user_from = info_get_current_username(cid, uid)
             me_action_text = ''
             if len(spl) == 1:
