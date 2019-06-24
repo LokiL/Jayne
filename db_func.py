@@ -679,6 +679,20 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
             conn.commit()
 
 
+def db_service_warn_swelling():
+    current_time = int(time.time())
+    global conn
+    cursor = conn.cursor()
+    cursor.execute("""
+    SELECT ROWID, time, cid, uid FROM warns_info ORDER BY time DESC
+    """)
+    warns_data = cursor.fetchall()
+    for warn in warns_data:
+        if current_time - warn[1] > var_config.warn_swelling_time:
+            db_mod_remove_last_warn_for_user('-' + str(warn[2]), warn[3])
+    return warns_data
+
+
 def db_stat_get_top_flooders(cid, limit=5, duration='a', msg_type='msg'):
     # duration: a, m, w, d = all, month, week, day
     # msg_type: msg, stickers, photos, audio, videomessages, voicemessages, files
