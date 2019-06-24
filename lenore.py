@@ -30,6 +30,8 @@ if len(sys.argv) >= 3:
 bot_token = sys.argv[1]  # Lenore token
 lenore = telebot.TeleBot(bot_token)
 
+restart_flag = False
+
 
 def service_send_report_to_master(message, e):
     try:
@@ -812,12 +814,18 @@ def mod_warn(message):
                                                                             "I'm sorry Dave, I'm afraid I can't do that."))
                 else:
                     spl = str(message.text).split(' ')
-                    if len(spl) == 1:
+                    if len(spl) == 1 or (len(spl) == 2 and spl[1] == 'rm'):
                         db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
-                                                                                'Неверный синтаксис команды, бака!\nПравильно: /warn [причина]'))
+                                                                                "Неверный синтаксис команды, бака!\n"
+                                                                                "Правильно: /warn [причина] или /warn rm [причина]"))
                     else:
                         db_func.db_stat_update_user_command_count(cid, uid, 'warn')
-                        reason = ' '.join(spl[1:])
+                        rm_msg_flag = False
+                        if spl[1] == 'rm':
+                            rm_msg_flag = True
+                            reason = ' '.join(spl[2:])
+                        else:
+                            reason = ' '.join(spl[1:])
                         warned_user_naming = info_get_current_username(cid, ruid)
                         if message.chat.username is None:
                             chat_link = '(приватный чат, ссылка недоступна)'
@@ -827,9 +835,12 @@ def mod_warn(message):
                             db_func.db_stat_add_new_user(cid, ruid, warned_user_naming)
                         current_warn_count = db_func.db_mod_increase_warn_count_for_user(cid, ruid, uid, reason)
                         warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
-                                       "Текущее количество предупреждений: {2}".format(
+                                       "Текущее количество предупреждений: {2}\n" \
+                                       "Варн протухнет через неделю.".format(
                             warned_user_naming, reason, current_warn_count)
-                        info_message_text = """{0} выдал варн пользователю {1} в чате {2} ({3})\n Причина: {4}\nТекущее количество предупреждений: {5}""".format(
+                        info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n " \
+                                            "Причина: {4}\n" \
+                                            "Текущее количество предупреждений: {5}".format(
                             info_get_current_username(cid, uid),
                             warned_user_naming,
                             message.chat.title,
@@ -841,6 +852,8 @@ def mod_warn(message):
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), info_message_text,
                                                 disable_web_page_preview=True)
+                        if rm_msg_flag:
+                            lenore.delete_message(cid, rmid)
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
@@ -1291,30 +1304,31 @@ def mod_unpin(message):
 ### Технические команды
 ###
 
-# @lenore.message_handler(commands=['resync'])
-# def tech_resync(message):
-#     try:
-#         cid = message.chat.id
-#         mid = message.message_id
-#         uid = message.from_user.id
-#         if not db_func.db_service_check_user_exists(cid, uid):
-#             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
-#
-#         if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
-#             db_func.db_service_add_bot_message(cid,
-#                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
-#         else:
-#             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
-#             db_func.db_service_add_bot_message(cid,
-#                                                lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
-#             db_func.db_service_restart_daemon_trigger(cid, mid)
-#             DeleteOldJayneMessages.terminate()
-#             ResetMessageCounters.terminate()
-#             db_func.db_service_database_conn_close()
-#             os.kill(os.getpid(), signal.SIGINT)
-#     except Exception as e:
-#         lenore.reply_to(message, e)
-#         service_send_report_to_master(message, e)
+@lenore.message_handler(commands=['resync'])
+def tech_resync(message):
+    try:
+        cid = message.chat.id
+        mid = message.message_id
+        uid = message.from_user.id
+        if not db_func.db_service_check_user_exists(cid, uid):
+            db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
+
+        if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
+            db_func.db_service_add_bot_message(cid,
+                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+        else:
+            global restart_flag
+            db_func.db_stat_update_user_command_count(cid, uid, 'resync')
+            db_func.db_service_add_bot_message(cid,
+                                               lenore.reply_to(message, 'Cинхронизация кода. Это займет несколько секунд.'))
+            db_func.db_service_restart_daemon_trigger(cid, mid)
+            restart_flag = True
+            time.sleep(5)
+            db_func.db_service_database_conn_close()
+            os.kill(os.getpid(), signal.SIGINT)
+    except Exception as e:
+        lenore.reply_to(message, e)
+        service_send_report_to_master(message, e)
 
 
 ###
@@ -1331,6 +1345,7 @@ def tech_get_tech(message):
                 uid = message.reply_to_message.from_user.id
             infostring = "UID: {0}\nCID: {1}\n".format(uid, cid)
             db_func.db_service_add_bot_message(cid, lenore.send_message(cid, infostring))
+            print(db_func.db_service_warn_swelling())
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
@@ -1445,7 +1460,8 @@ def processing_add_stat_info_to_db(message):
 
 
 def service_delete_old_bot_messages():
-    while True:
+    global restart_flag
+    while not restart_flag:
         try:
             current_old_bot_messages = db_func.db_service_get_old_bot_messages(var_config.bot_message_swelling_time)
         except Exception as e:
@@ -1463,12 +1479,23 @@ def service_delete_old_bot_messages():
 
 
 def service_reset_message_counters():
-    while True:
+    global restart_flag
+    while not restart_flag:
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
             print(e)
         time.sleep(30)
+
+
+def service_warn_swelling():
+    global restart_flag
+    while not restart_flag:
+        try:
+            db_func.db_service_warn_swelling()
+        except Exception as e:
+            print(e)
+        time.sleep(60)
 
 
 if __name__ == '__main__':
@@ -1477,7 +1504,8 @@ if __name__ == '__main__':
     DeleteOldJayneMessages.start()
     ResetMessageCounters = Process(target=service_reset_message_counters, args=())
     ResetMessageCounters.start()
-
+    WarnsSwelling = Process(target=service_warn_swelling, args=())
+    WarnsSwelling.start()
     while True:
         try:
             lenore.polling(none_stop=True)
