@@ -1487,13 +1487,24 @@ def service_reset_message_counters():
         time.sleep(30)
 
 
+def service_warn_swelling():
+    global restart_flag
+    while not restart_flag:
+        try:
+            db_func.db_service_warn_swelling()
+        except Exception as e:
+            print(e)
+        time.sleep(60)
+
+
 if __name__ == '__main__':
     freeze_support()
     DeleteOldJayneMessages = Process(target=service_delete_old_bot_messages, args=())
     DeleteOldJayneMessages.start()
     ResetMessageCounters = Process(target=service_reset_message_counters, args=())
     ResetMessageCounters.start()
-
+    WarnsSwelling = Process(target=service_warn_swelling, args=())
+    WarnsSwelling.start()
     while True:
         try:
             lenore.polling(none_stop=True)
