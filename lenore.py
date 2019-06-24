@@ -382,7 +382,7 @@ def all_me_action(message):
             db_func.db_stat_update_user_command_count(cid, uid, 'me')
 
             spl = message.text.split(' ')
-            # lenore.delete_message(cid, message.message_id)
+            lenore.delete_message(cid, message.message_id)
             user_from = info_get_current_username(cid, uid)
             me_action_text = ''
             if len(spl) == 1:
@@ -888,35 +888,35 @@ def mod_chmod(message):
                                 user_rights_readable_new.append('✅')
                             else:
                                 user_rights_readable_new.append('❌')
-                            db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
-                                                                                    "Права успешно изменены для {0}:\n" \
-                                                                                    "{1} > {2} - общие действия\n" \
-                                                                                    "{3} > {4} - варны\n" \
-                                                                                    "{5} > {6} - муты\n" \
-                                                                                    "{7} > {8} - баны\n" \
-                                                                                    "{9} > {10} - пины\n" \
-                                                                                    "{11} > {12} - изменение доступов\n" \
-                                                                                    "{13} > {14} - перезапуск бота\n"
-                                                                                    "{15} > {16} - управление антиботом".format(
-                                                                                        info_get_current_username(
-                                                                                            cid, ruid),
-                                                                                        user_rights_readable_old[0],
-                                                                                        user_rights_readable_new[0],
-                                                                                        user_rights_readable_old[1],
-                                                                                        user_rights_readable_new[1],
-                                                                                        user_rights_readable_old[2],
-                                                                                        user_rights_readable_new[2],
-                                                                                        user_rights_readable_old[3],
-                                                                                        user_rights_readable_new[3],
-                                                                                        user_rights_readable_old[4],
-                                                                                        user_rights_readable_new[4],
-                                                                                        user_rights_readable_old[5],
-                                                                                        user_rights_readable_new[5],
-                                                                                        user_rights_readable_old[6],
-                                                                                        user_rights_readable_new[6],
-                                                                                        user_rights_readable_old[7],
-                                                                                        user_rights_readable_new[
-                                                                                            7])))
+                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                                                                                "Права успешно изменены для {0}:\n" \
+                                                                                "{1} > {2} - общие действия\n" \
+                                                                                "{3} > {4} - варны\n" \
+                                                                                "{5} > {6} - муты\n" \
+                                                                                "{7} > {8} - баны\n" \
+                                                                                "{9} > {10} - пины\n" \
+                                                                                "{11} > {12} - изменение доступов\n" \
+                                                                                "{13} > {14} - перезапуск бота\n"
+                                                                                "{15} > {16} - управление антиботом".format(
+                                                                                    info_get_current_username(
+                                                                                        cid, ruid),
+                                                                                    user_rights_readable_old[0],
+                                                                                    user_rights_readable_new[0],
+                                                                                    user_rights_readable_old[1],
+                                                                                    user_rights_readable_new[1],
+                                                                                    user_rights_readable_old[2],
+                                                                                    user_rights_readable_new[2],
+                                                                                    user_rights_readable_old[3],
+                                                                                    user_rights_readable_new[3],
+                                                                                    user_rights_readable_old[4],
+                                                                                    user_rights_readable_new[4],
+                                                                                    user_rights_readable_old[5],
+                                                                                    user_rights_readable_new[5],
+                                                                                    user_rights_readable_old[6],
+                                                                                    user_rights_readable_new[6],
+                                                                                    user_rights_readable_old[7],
+                                                                                    user_rights_readable_new[7])))
+
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
