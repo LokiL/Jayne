@@ -812,12 +812,18 @@ def mod_warn(message):
                                                                             "I'm sorry Dave, I'm afraid I can't do that."))
                 else:
                     spl = str(message.text).split(' ')
-                    if len(spl) == 1:
+                    if len(spl) == 1 or (len(spl) == 2 and spl[1] == 'rm'):
                         db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
-                                                                                'Неверный синтаксис команды, бака!\nПравильно: /warn [причина]'))
+                                                                                "Неверный синтаксис команды, бака!\n"
+                                                                                "Правильно: /warn [причина] или /warn rm [причина]"))
                     else:
                         db_func.db_stat_update_user_command_count(cid, uid, 'warn')
-                        reason = ' '.join(spl[1:])
+                        rm_msg_flag = False
+                        if spl[1] == 'rm':
+                            rm_msg_flag = True
+                            reason = ' '.join(spl[2:])
+                        else:
+                            reason = ' '.join(spl[1:])
                         warned_user_naming = info_get_current_username(cid, ruid)
                         if message.chat.username is None:
                             chat_link = '(приватный чат, ссылка недоступна)'
@@ -829,7 +835,9 @@ def mod_warn(message):
                         warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
                                        "Текущее количество предупреждений: {2}".format(
                             warned_user_naming, reason, current_warn_count)
-                        info_message_text = """{0} выдал варн пользователю {1} в чате {2} ({3})\n Причина: {4}\nТекущее количество предупреждений: {5}""".format(
+                        info_message_text = "{0} выдал варн пользователю {1} в чате {2} ({3})\n " \
+                                            "Причина: {4}\n" \
+                                            "Текущее количество предупреждений: {5}".format(
                             info_get_current_username(cid, uid),
                             warned_user_naming,
                             message.chat.title,
@@ -841,6 +849,8 @@ def mod_warn(message):
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), info_message_text,
                                                 disable_web_page_preview=True)
+                        if rm_msg_flag:
+                            lenore.delete_message(cid, rmid)
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
