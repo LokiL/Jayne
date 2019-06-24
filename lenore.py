@@ -30,6 +30,8 @@ if len(sys.argv) >= 3:
 bot_token = sys.argv[1]  # Lenore token
 lenore = telebot.TeleBot(bot_token)
 
+restart_flag = False
+
 
 def service_send_report_to_master(message, e):
     try:
@@ -1301,30 +1303,32 @@ def mod_unpin(message):
 ### Технические команды
 ###
 
-# @lenore.message_handler(commands=['resync'])
-# def tech_resync(message):
-#     try:
-#         cid = message.chat.id
-#         mid = message.message_id
-#         uid = message.from_user.id
-#         if not db_func.db_service_check_user_exists(cid, uid):
-#             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
-#
-#         if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
-#             db_func.db_service_add_bot_message(cid,
-#                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
-#         else:
-#             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
-#             db_func.db_service_add_bot_message(cid,
-#                                                lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
-#             db_func.db_service_restart_daemon_trigger(cid, mid)
-#             DeleteOldJayneMessages.terminate()
-#             ResetMessageCounters.terminate()
-#             db_func.db_service_database_conn_close()
-#             os.kill(os.getpid(), signal.SIGINT)
-#     except Exception as e:
-#         lenore.reply_to(message, e)
-#         service_send_report_to_master(message, e)
+@lenore.message_handler(commands=['resync'])
+def tech_resync(message):
+    try:
+        cid = message.chat.id
+        mid = message.message_id
+        uid = message.from_user.id
+        if not db_func.db_service_check_user_exists(cid, uid):
+            db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
+
+        if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
+            db_func.db_service_add_bot_message(cid,
+                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+        else:
+            global restart_flag
+            restart_flag = True
+            db_func.db_stat_update_user_command_count(cid, uid, 'resync')
+            db_func.db_service_add_bot_message(cid,
+                                               lenore.reply_to(message, 'Cинхронизация кода. Ожидайте пять секунд.'))
+            db_func.db_service_restart_daemon_trigger(cid, mid)
+            DeleteOldJayneMessages.terminate()
+            ResetMessageCounters.terminate()
+            db_func.db_service_database_conn_close()
+            os.kill(os.getpid(), signal.SIGINT)
+    except Exception as e:
+        lenore.reply_to(message, e)
+        service_send_report_to_master(message, e)
 
 
 ###
@@ -1341,6 +1345,7 @@ def tech_get_tech(message):
                 uid = message.reply_to_message.from_user.id
             infostring = "UID: {0}\nCID: {1}\n".format(uid, cid)
             db_func.db_service_add_bot_message(cid, lenore.send_message(cid, infostring))
+            print(db_func.db_service_warn_swelling())
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
@@ -1455,7 +1460,8 @@ def processing_add_stat_info_to_db(message):
 
 
 def service_delete_old_bot_messages():
-    while True:
+    global restart_flag
+    while not restart_flag:
         try:
             current_old_bot_messages = db_func.db_service_get_old_bot_messages(var_config.bot_message_swelling_time)
         except Exception as e:
@@ -1473,7 +1479,8 @@ def service_delete_old_bot_messages():
 
 
 def service_reset_message_counters():
-    while True:
+    global restart_flag
+    while not restart_flag:
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
