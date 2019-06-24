@@ -1331,7 +1331,7 @@ def tech_resync(message):
             restart_flag = True
             time.sleep(5)
             db_func.db_service_database_conn_close()
-            os.kill(os.getpid(), signal.SIGINT)
+            os.kill(os.getpid(), signal.SIGTERM)
     except Exception as e:
         lenore.reply_to(message, e)
         service_send_report_to_master(message, e)
