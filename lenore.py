@@ -71,10 +71,6 @@ info_logger = get_logger("info_logger")
 restart_flag = False
 
 
-@atexit.register
-def goodbye():
-    logging.shutdown()
-
 
 if db_func.db_service_check_restart_trigger_table_exists():
     try:
@@ -1045,7 +1041,13 @@ def mod_mute(message):
                             mute_time = int(command[1]) * 3600
                         elif command[2] == 'm':
                             mute_time = int(command[1]) * 60
-                        mute_reason = ' '.join(command[3:])
+                        rm_msg_flag = False
+                        if command[3] == 'rm':
+                            rm_msg_flag = True
+                            mute_reason = ' '.join(command[4:])
+                        else:
+                            mute_reason = ' '.join(command[3:])
+
                         mute_until = int(time.time()) + mute_time
                         lenore.restrict_chat_member(cid, ruid,
                                                     mute_until, False, False,
@@ -1079,6 +1081,8 @@ def mod_mute(message):
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
                                                 disable_web_page_preview=True)
+                        if rm_msg_flag:
+                            lenore.delete_message(cid, rmid)
     except Exception as e:
         exc_logger.exception(e)
 
@@ -1113,7 +1117,12 @@ def mod_ban(message):
                         db_func.db_service_add_bot_message(cid,
                                                            lenore.reply_to(message, 'Необходимо указать причину бана!'))
                     else:
-                        kick_reason = ' '.join(command[1:])
+                        rm_msg_flag = False
+                        if command[1] == 'rm':
+                            rm_msg_flag = True
+                            kick_reason = ' '.join(command[2:])
+                        else:
+                            kick_reason = ' '.join(command[1:])
                         lenore.kick_chat_member(cid, ruid)
                         db_func.db_stat_update_user_command_count(cid, uid, 'ban')
                         if not db_func.db_service_check_user_exists(cid, ruid):
@@ -1139,6 +1148,8 @@ def mod_ban(message):
                             lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
                                                 disable_web_page_preview=True)
+                        if rm_msg_flag:
+                            lenore.delete_message(cid, rmid)
     except Exception as e:
         exc_logger.exception(e)
 
@@ -1506,6 +1517,9 @@ if __name__ == '__main__':
     ResetMessageCounters.start()
     WarnsSwelling = Process(target=service_warn_swelling, args=())
     WarnsSwelling.start()
+    @atexit.register
+    def goodbye():
+        logging.shutdown()
     while True:
         try:
             lenore.polling(none_stop=True)

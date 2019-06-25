@@ -16,7 +16,7 @@ chats_for_echo_all = [1001254199480, # оргчат ПМ
                       1001245949155] # AOBC chat
 master_id = 24978372
 bot_message_swelling_time = 90
-warn_swelling_time = 604800  # 86400 1 week
+warn_swelling_time = 604800  # 604800 1 week
 
 
 # noinspection PyShadowingNames
