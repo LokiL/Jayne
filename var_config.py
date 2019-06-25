@@ -17,7 +17,8 @@ chats_for_echo_all = [1001254199480, # оргчат ПМ
 master_id = 24978372
 bot_message_swelling_time = 90
 warn_swelling_time = 604800  # 604800 1 week
-
+automute_time = 3600 # seconds
+sticker_automute_limit = 60 # seconds
 
 # noinspection PyShadowingNames
 def service_get_chat_forwarding(cid):

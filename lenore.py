@@ -71,6 +71,18 @@ info_logger = get_logger("info_logger")
 restart_flag = False
 
 
+def service_automute_deco(muted, cid, muter, reason="Automute"):
+    try:
+        mute_until = int(time.time()) + var_config.automute_time
+        lenore.restrict_chat_member(cid, muted,
+                                    mute_until, False, False,
+                                    False, False)
+        db_func.db_mod_increase_mute_count_for_user(muted, cid, var_config.automute_time, muter, reason)
+        info_logger.debug("Automute for " + str(muted) + " from " + str(muter) + " in " + str(cid) + " for: " + reason)
+        return True
+    except Exception as e:
+        exc_logger.exception(e)
+
 
 if db_func.db_service_check_restart_trigger_table_exists():
     try:
@@ -857,17 +869,33 @@ def mod_warn(message):
                         if not db_func.db_service_check_user_exists(cid, ruid):
                             db_func.db_stat_add_new_user(cid, ruid, warned_user_naming)
                         current_warn_count = db_func.db_mod_increase_warn_count_for_user(cid, ruid, uid, reason)
-                        warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
-                                       "Текущее количество предупреждений: {2}\n" \
-                                       "Варн протухнет через неделю.".format(
-                            warned_user_naming, reason, current_warn_count)
-                        info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n " \
-                                            "Причина: {4}\n" \
-                                            "Текущее количество предупреждений: {5}".format(
-                            info_get_current_username(cid, uid),
-                            warned_user_naming,
-                            message.chat.title,
-                            chat_link, reason, current_warn_count)
+                        if current_warn_count < 3:
+                            warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
+                                           "Всего варнов: {2}\n" \
+                                           "Количество варнов снизится на 1 через неделю.".format(
+                                warned_user_naming, reason, current_warn_count)
+                            info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n" \
+                                                "Причина: {4}\n" \
+                                                "Всего варнов: {5}".format(
+                                info_get_current_username(cid, uid),
+                                warned_user_naming,
+                                message.chat.title,
+                                chat_link, reason, current_warn_count)
+                        else:
+                            warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
+                                           "Всего варнов: {2}\n" \
+                                           "Количество варнов снизится на 1 через неделю.\n" \
+                                           "Также, поскольку варнов >= 3, на тебя накладывается молчанка на 1 час.".format(
+                                warned_user_naming, reason, current_warn_count)
+                            service_automute_deco(ruid, cid, uid)
+                            info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n" \
+                                                "Причина: {4}\n" \
+                                                "Всего варнов: {5}\n" \
+                                                "Поскольку варнов >= 3, наложена молчанка на час".format(
+                                info_get_current_username(cid, uid),
+                                warned_user_naming,
+                                message.chat.title,
+                                chat_link, reason, current_warn_count)
                         if not var_config.service_get_chat_forwarding(cid):
                             lenore.reply_to(message.reply_to_message, warn_message)
                         else:
@@ -1517,9 +1545,13 @@ if __name__ == '__main__':
     ResetMessageCounters.start()
     WarnsSwelling = Process(target=service_warn_swelling, args=())
     WarnsSwelling.start()
+
+
     @atexit.register
     def goodbye():
         logging.shutdown()
+
+
     while True:
         try:
             lenore.polling(none_stop=True)
