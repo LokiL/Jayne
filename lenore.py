@@ -8,6 +8,9 @@ import time
 import argparse
 from datetime import datetime
 from multiprocessing import Process, freeze_support
+import logging
+from logging.handlers import TimedRotatingFileHandler
+import atexit
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -19,40 +22,58 @@ import var_config
 parser = argparse.ArgumentParser(add_help=True, description='Jayne Bot for Telegram')
 parser.add_argument('--token', action='store', help='Authentication token [required]', required=True)
 parser.add_argument('--db-file', action='store', help='Path to SQLite database file', required=True)
+parser.add_argument('--log', action='store', help='Enables logging into PATH/file', required=True)
 parser.add_argument('--proxy', action='store', help='HTTP(S) Proxy in format [login:password@host:port]')
+
 args = parser.parse_args()
+
+bot_token = args.token  # Lenore token
+lenore = telebot.TeleBot(bot_token)
 
 db_func.db_service_database_path(args.db_file)
 db_func.db_service_database_conn_open()
 db_func.db_service_init_tech_tables()
 
 if args.proxy:
-    apihelper.proxy = {"http" : "http://%s" % args.proxy,
-                       "https" : "https://%s" % args.proxy}
+    apihelper.proxy = {"http": "http://%s" % args.proxy,
+                       "https": "https://%s" % args.proxy}
 
-#
-# Переменные
-#
-bot_token = args.token  # Lenore token
-lenore = telebot.TeleBot(bot_token)
+# FORMATTER = logging.Formatter("%(asctime)s — %(name)s — %(levelname)s — %(message)s")
+FORMATTER = logging.Formatter('%(asctime)s [%(levelname)s] %(funcName)s: %(message)s', datefmt='%m/%d/%Y %H:%M:%S')
+LOG_FILE = "%s" % args.log
+
+
+def get_console_handler():
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(FORMATTER)
+    return console_handler
+
+
+def get_file_handler():
+    file_handler = TimedRotatingFileHandler(LOG_FILE, when='midnight', interval=1, backupCount=7)
+    file_handler.setFormatter(FORMATTER)
+    return file_handler
+
+
+def get_logger(logger_name):
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)  # better to have too much log than not enough
+    logger.addHandler(get_console_handler())
+    logger.addHandler(get_file_handler())
+    # with this pattern, it's rarely necessary to propagate the error up to parent
+    logger.propagate = False
+    return logger
+
+
+exc_logger = get_logger("exc_logger")
+info_logger = get_logger("info_logger")
 
 restart_flag = False
 
 
-def service_send_report_to_master(message, e):
-    try:
-        text = message.text
-        cid = message.chat.id
-        chat_name = message.chat.title
-        chat_link = message.chat.username
-        error_message = "Эксепшн: \n" \
-                        "{0}" \
-                        "\n" \
-                        "Чат: {1} - {2} - {3}\n" \
-                        "Текст команды: {4}".format(e, chat_name, chat_link, cid, text)
-        lenore.send_message(var_config.master_id, error_message)
-    except Exception as e:
-        print(e)
+@atexit.register
+def goodbye():
+    logging.shutdown()
 
 
 if db_func.db_service_check_restart_trigger_table_exists():
@@ -64,7 +85,7 @@ if db_func.db_service_check_restart_trigger_table_exists():
                                                                         'Синхронизация завершена. Новый код успешно запущен.'))
             db_func.db_service_restart_daemon_trigger(cid, mid)
     except Exception as e:
-        lenore.send_message(cid, e)
+        exc_logger.exception(e)
 
 
 def service_init_table_for_chat(cid, uid, username):
@@ -82,16 +103,17 @@ def service_init_table_for_chat(cid, uid, username):
                                      'Если их не будет - я буду постоянно сыпать ошибками :('.format(
                 'chat_' + str(cid)[1:] + '_users', username))
         except Exception as e:
+            exc_logger.exception(e)
             pass
 
     else:
         try:
             lenore.send_message(cid, 'О, а этот чатик я знаю!'.format())
         except Exception as e:
+            exc_logger.exception(e)
             pass
 
 
-# service_send_report_to_master(message, e)
 ###
 ### Сервисные проверки
 ###
@@ -153,8 +175,7 @@ def processing_anti_bot(message):
                     antibot_markup.add(InlineKeyboardButton("🦐", callback_data=approve_data))
                     lenore.send_message(cid, welcome_message, reply_markup=antibot_markup)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -190,7 +211,7 @@ def all_rate_photo(message):
                 lenore.send_photo(cid, file_info.file_id, caption=photo_caption, reply_markup=rate_markup)
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.callback_query_handler(func=lambda call: True)
@@ -280,6 +301,7 @@ def callback_inline(call):
                 lenore.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Ты уже проголосовал!")
     except Exception as e:
         lenore.send_message(call.chat.id, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -343,7 +365,7 @@ def all_userinfo(message):
             db_func.db_service_add_bot_message(cid, lenore.reply_to(message, userinfo_msg, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['slap'])
@@ -372,7 +394,7 @@ def all_slap(message):
                 lenore.send_message(cid, msg_text)
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['me'])
@@ -404,7 +426,7 @@ def all_me_action(message):
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['topmsg'])
@@ -428,7 +450,7 @@ def all_topmsg(message):
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['topweeklymsg'])
@@ -451,7 +473,7 @@ def all_topweeklymsg(message):
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['topdailymsg'])
@@ -473,7 +495,7 @@ def all_topdailymsg(message):
             db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['topmonthlymsg'])
@@ -495,7 +517,7 @@ def all_topmonthlymsg(message):
             db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['report'])
@@ -536,8 +558,7 @@ def all_report(message):
                                             chat_link), disable_web_page_preview=True, parse_mode='Markdown')
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['lenorehelp'])
@@ -574,7 +595,7 @@ def all_lenorehelp(message):
             db_func.db_service_add_bot_message(cid, lenore.reply_to(message, help_text))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -599,7 +620,7 @@ def link_rules_GG(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -623,7 +644,7 @@ def link_afterdark(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['furrygamers'])
@@ -638,7 +659,7 @@ def link_furrygamers(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['msk_fur'])
@@ -653,7 +674,7 @@ def link_msk_fur(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['vapefur'])
@@ -668,7 +689,7 @@ def link_vapefur(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 # furry > /dev/null
@@ -685,7 +706,7 @@ def link_furrydevnull(message):
                                                lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['eww'])
@@ -711,7 +732,7 @@ def all_eww(message):
                 lenore.send_document(cid, f, message.reply_to_message.message_id)
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['usuka'])
@@ -737,7 +758,7 @@ def all_usuka(message):
                 lenore.send_sticker(cid, f, message.reply_to_message.message_id)
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['wtfisgoingon'])
@@ -764,7 +785,7 @@ def all_wtfisgoingon(message):
 
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['badumtss'])
@@ -790,7 +811,7 @@ def mod_badumtss(message):
                 lenore.send_sticker(cid, f, message.reply_to_message.message_id)
     except Exception as e:
         lenore.send_message(message.chat.id, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -861,8 +882,7 @@ def mod_warn(message):
                         if rm_msg_flag:
                             lenore.delete_message(cid, rmid)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['chmod'])
@@ -937,8 +957,7 @@ def mod_chmod(message):
                                                                                     user_rights_readable_new[7])))
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['set_antibot'])
@@ -985,8 +1004,7 @@ def mod_set_antibot(message):
 
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['mute'])
@@ -1062,8 +1080,7 @@ def mod_mute(message):
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
                                                 disable_web_page_preview=True)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['ban'])
@@ -1123,8 +1140,7 @@ def mod_ban(message):
                             lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
                                                 disable_web_page_preview=True)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['nullifywarn'])
@@ -1194,8 +1210,7 @@ def mod_nullify_warn(message):
                 db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['removewarn'])
@@ -1257,8 +1272,7 @@ def mod_remove_warn(message):
                                 lenore.send_message(var_config.service_get_chat_forwarding(cid),
                                                     forward_message_text)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['pin'])
@@ -1282,8 +1296,7 @@ def mod_pin(message):
                 db_func.db_stat_update_user_command_count(cid, uid, 'pin')
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['unpin'])
@@ -1302,8 +1315,7 @@ def mod_unpin(message):
             lenore.unpin_chat_message(cid)
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -1326,15 +1338,15 @@ def tech_resync(message):
             global restart_flag
             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, 'Cинхронизация кода. Это займет несколько секунд.'))
+                                               lenore.reply_to(message,
+                                                               'Cинхронизация кода. Это займет несколько секунд.'))
             db_func.db_service_restart_daemon_trigger(cid, mid)
             restart_flag = True
             time.sleep(5)
             db_func.db_service_database_conn_close()
             os.kill(os.getpid(), signal.SIGTERM)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -1351,38 +1363,23 @@ def tech_get_tech(message):
                 uid = message.reply_to_message.from_user.id
             infostring = "UID: {0}\nCID: {1}\n".format(uid, cid)
             db_func.db_service_add_bot_message(cid, lenore.send_message(cid, infostring))
-            print(db_func.db_service_warn_swelling())
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        lenore.send_message(cid, e)
+        exc_logger.exception(e)
 
 
 ###
 ### Запуск таблицы для чата
 ###
-# @lenore.message_handler(commands=['init'])
-# def tech_init_table_for_chat(message):
-#     # try:
-#     cid = message.chat.id
-#     uid = message.from_user.id
-#     spl = str(message.text).split(' ')
-#     if message.from_user.id == var_config.master_id:
-#         table_name = 'chat_' + str(cid)[1:] + '_users'
-#         if not db_func.db_service_check_chat_table_exists(cid):
-#             db_func.db_service_create_chat_table(cid)
-#             lenore.reply_to(message, 'Таблица {0} создана успешно.'.format(table_name))
-#             if not db_func.db_service_check_user_exists(cid, uid):
-#                 db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
-#             current_user_rights = db_func.db_service_get_all_rights_for_user(cid, uid)
-#             db_func.db_mod_set_chmod_for_user(cid, uid, 11111111)
-#             new_user_rights = db_func.db_service_get_all_rights_for_user(cid, uid)
-#             lenore.reply_to(message, 'Права успешно изменены для {0}:\n'
-#                                      'Было:  {1}\n'
-#                                      'Стало: {2}'.format(info_get_current_username(cid, uid),
-#                                                          current_user_rights,
-#                                                          new_user_rights))
-#         else:
-#             lenore.reply_to(message, 'Таблица {0} уже существует'.format(table_name))
+@lenore.message_handler(commands=['init'])
+def tech_init_table_for_chat(message):
+    try:
+        cid = message.chat.id
+        uid = message.from_user.id
+        if message.from_user.id == var_config.master_id:
+            service_init_table_for_chat(cid, uid, message.from_user.username)
+    except Exception as e:
+        exc_logger.exception(e)
 
 
 @lenore.message_handler(commands=['echo_all'])
@@ -1402,21 +1399,20 @@ def tech_echo_all(message):
                                                                                      bar[1], text_message))
 
                     except Exception as e:
-                        lenore.reply_to(message, e)
-                        service_send_report_to_master(message, e)
+                        exc_logger.exception(e)
+
 
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['init_new_alter'])
-def tech_init_new_alter(message):
-    try:
-        if message.from_user.id == var_config.master_id:
-            lenore.reply_to(message, db_func.add_mid_column_into_bot_messages_once())
-    except Exception as e:
-        lenore.reply_to(message, e)
+# @lenore.message_handler(commands=['init_new_alter'])
+# def tech_init_new_alter(message):
+#     try:
+#         if message.from_user.id == var_config.master_id:
+#             lenore.reply_to(message, db_func.add_mid_column_into_bot_messages_once())
+#     except Exception as e:
+#         exc_logger.exception(e)
 
 
 ###
@@ -1434,8 +1430,7 @@ def processing_detect_voice(message):
                 db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
             lenore.delete_message(message.chat.id, message.message_id)
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 ###
@@ -1461,8 +1456,7 @@ def processing_add_stat_info_to_db(message):
         else:
             pass
     except Exception as e:
-        lenore.reply_to(message, e)
-        service_send_report_to_master(message, e)
+        exc_logger.exception(e)
 
 
 def service_delete_old_bot_messages():
@@ -1471,7 +1465,7 @@ def service_delete_old_bot_messages():
         try:
             current_old_bot_messages = db_func.db_service_get_old_bot_messages(var_config.bot_message_swelling_time)
         except Exception as e:
-            print(e)
+            exc_logger.exception(e)
         if len(current_old_bot_messages) == 0:
             pass
         else:
@@ -1480,7 +1474,7 @@ def service_delete_old_bot_messages():
                     db_func.db_service_delete_old_bot_message(row[0])
                     lenore.delete_message(row[1], row[2])
                 except Exception as e:
-                    print(e)
+                    exc_logger.exception(e)
         time.sleep(5)
 
 
@@ -1490,7 +1484,7 @@ def service_reset_message_counters():
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
-            print(e)
+            exc_logger.exception(e)
         time.sleep(30)
 
 
@@ -1500,7 +1494,7 @@ def service_warn_swelling():
         try:
             db_func.db_service_warn_swelling()
         except Exception as e:
-            print(e)
+            exc_logger.exception(e)
         time.sleep(60)
 
 
@@ -1516,5 +1510,5 @@ if __name__ == '__main__':
         try:
             lenore.polling(none_stop=True)
         except Exception as e:
-            print(e)
+            exc_logger.exception(e)
             time.sleep(15)
