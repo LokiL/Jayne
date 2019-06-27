@@ -11,6 +11,7 @@ from multiprocessing import Process, freeze_support
 import logging
 from logging.handlers import TimedRotatingFileHandler
 import atexit
+import datetime
 
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -71,13 +72,13 @@ info_logger = get_logger("info_logger")
 restart_flag = False
 
 
-def service_automute_deco(muted, cid, muter, reason="Automute"):
+def service_warn_automute_deco(muted, cid, muter, reason="Automute"):
     try:
-        mute_until = int(time.time()) + var_config.automute_time
+        mute_until = int(time.time()) + db_func.db_service_get_warn_automute_time(cid)
         lenore.restrict_chat_member(cid, muted,
                                     mute_until, False, False,
                                     False, False)
-        db_func.db_mod_increase_mute_count_for_user(muted, cid, var_config.automute_time, muter, reason)
+        db_func.db_mod_increase_mute_count_for_user(muted, cid, db_func.db_service_get_warn_automute_time(cid), muter, reason)
         info_logger.debug("Automute for " + str(muted) + " from " + str(muter) + " in " + str(cid) + " for: " + reason)
         return True
     except Exception as e:
@@ -354,7 +355,8 @@ def all_userinfo(message):
                            "`{11} - пины;`\n" \
                            "`{12} - изменение доступов;`\n" \
                            "`{13} - перезагрузка бота;`\n" \
-                           "`{14} - управление антиботом`".format(
+                           "`{14} - управление антиботом;`\n" \
+                           "`{15} - конфиг чата`".format(
                 info_get_current_username(cid, uid),
                 db_func.db_stat_get_message_count_for_user(cid, uid)[0],
                 db_func.db_stat_get_message_count_for_user(cid, uid)[1],
@@ -369,7 +371,8 @@ def all_userinfo(message):
                 user_rights_readable[4],
                 user_rights_readable[5],
                 user_rights_readable[6],
-                user_rights_readable[7])
+                user_rights_readable[7],
+                user_rights_readable[8])
             db_func.db_service_add_bot_message(cid, lenore.reply_to(message, userinfo_msg, parse_mode='Markdown'))
     except Exception as e:
         lenore.send_message(message.chat.id, e)
@@ -844,7 +847,7 @@ def mod_warn(message):
             else:
                 ruid = message.reply_to_message.from_user.id  # id юзера, на сообщение которого реплаят
                 rmid = message.reply_to_message.message_id  # id сообщения, на которое реплаят
-                if check_user_is_admin(ruid, cid):
+                if check_user_is_admin(ruid, cid) or uid == ruid:
                     db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
                                                                             "I'm sorry Dave, I'm afraid I can't do that."))
                 else:
@@ -882,20 +885,21 @@ def mod_warn(message):
                                 message.chat.title,
                                 chat_link, reason, current_warn_count)
                         else:
+                            warn_automute_time = db_func.db_service_get_warn_automute_time(cid)
                             warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
                                            "Всего варнов: {2}\n" \
                                            "Количество варнов снизится на 1 через неделю.\n" \
-                                           "Также, поскольку варнов >= 3, на тебя накладывается молчанка на 1 час.".format(
-                                warned_user_naming, reason, current_warn_count)
-                            service_automute_deco(ruid, cid, uid)
+                                           "Также, поскольку варнов >= 3, на тебя накладывается молчанка на {3}".format(
+                                warned_user_naming, reason, current_warn_count, str(datetime.timedelta(seconds=warn_automute_time)))
+                            service_warn_automute_deco(ruid, cid, uid)
                             info_message_text = "{0} выдал варн {1} в чате {2} ({3})\n" \
                                                 "Причина: {4}\n" \
                                                 "Всего варнов: {5}\n" \
-                                                "Поскольку варнов >= 3, наложена молчанка на час".format(
+                                                "Поскольку варнов >= 3, наложена молчанка на {6}".format(
                                 info_get_current_username(cid, uid),
                                 warned_user_naming,
                                 message.chat.title,
-                                chat_link, reason, current_warn_count)
+                                chat_link, reason, current_warn_count, str(datetime.timedelta(seconds=warn_automute_time)))
                         if not var_config.service_get_chat_forwarding(cid):
                             lenore.reply_to(message.reply_to_message, warn_message)
                         else:
@@ -930,9 +934,9 @@ def mod_chmod(message):
                                                                             "I'm sorry Dave, I'm afraid I can't do that.\nУ тебя нет доступа на изменение прав."))
                 else:
                     command = str(message.text).split(' ')
-                    if not re.match(r'[01]{8}\Z', command[1]):
+                    if not re.match(r'[01]{9}\Z', command[1]):
                         db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
-                                                                                "I'm sorry Dave, I'm afraid I can't do that.\nНекорректный синтаксис. /chmod [nnnnnnnn], где n=0 или 1"))
+                                                                                "I'm sorry Dave, I'm afraid I can't do that.\nНекорректный синтаксис. /chmod [nnnnnnnnn], где n=0 или 1"))
                     else:
                         db_func.db_stat_update_user_command_count(cid, uid, 'chmod')
                         ruid = message.reply_to_message.from_user.id  # id юзера, на сообщение которого реплаят
@@ -960,7 +964,8 @@ def mod_chmod(message):
                                                                                 "{9} > {10} - пины\n" \
                                                                                 "{11} > {12} - изменение доступов\n" \
                                                                                 "{13} > {14} - перезапуск бота\n"
-                                                                                "{15} > {16} - управление антиботом".format(
+                                                                                "{15} > {16} - управление антиботом\n"
+                                                                                "{17} > {18} - конфиг чата".format(
                                                                                     info_get_current_username(
                                                                                         cid, ruid),
                                                                                     user_rights_readable_old[0],
@@ -978,7 +983,9 @@ def mod_chmod(message):
                                                                                     user_rights_readable_old[6],
                                                                                     user_rights_readable_new[6],
                                                                                     user_rights_readable_old[7],
-                                                                                    user_rights_readable_new[7])))
+                                                                                    user_rights_readable_new[7],
+                                                                                    user_rights_readable_old[8],
+                                                                                    user_rights_readable_new[8])))
 
     except Exception as e:
         exc_logger.exception(e)
@@ -1000,11 +1007,11 @@ def mod_set_antibot(message):
                 db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that.\nУ тебя нет доступа на управление антиботом."))
             else:
-                if message.text == '/set_antibot rm':
+                spl_command = message.text.split(' ')
+                if spl_command[1] == 'rm':
                     db_func.db_mod_set_antibot_welcome_messages(cid, rm=True)
                     db_func.db_service_add_bot_message(cid, lenore.reply_to(message, "Антибот успешно отключен"))
                 else:
-                    spl_command = message.text.split(' ')
                     raw_welcomes = ' '.join(spl_command[1:])
                     clean_welcomes = raw_welcomes.split('|')
                     if len(clean_welcomes) != 3:
@@ -1048,7 +1055,7 @@ def mod_mute(message):
             else:
                 ruid = message.reply_to_message.from_user.id  # id юзера, на сообщение которого реплаят
                 rmid = message.reply_to_message.message_id  # id сообщения, на которое реплаят
-                if check_user_is_admin(ruid, cid):
+                if check_user_is_admin(ruid, cid) or uid == ruid:
                     db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
                                                                             'Невозможно наложить мут на того, кто сильнее меня, я простой бот. :('))
                 else:
@@ -1136,7 +1143,7 @@ def mod_ban(message):
             else:
                 rmid = message.reply_to_message.message_id  # id
                 ruid = message.reply_to_message.from_user.id
-                if check_user_is_admin(ruid, cid):
+                if check_user_is_admin(ruid, cid) or uid == ruid:
                     db_func.db_service_add_bot_message(cid, lenore.reply_to(message, 'Админа нельзя забанить.'))
                 else:
                     command = str(message.text).split(' ')
@@ -1416,7 +1423,7 @@ def tech_init_table_for_chat(message):
         cid = message.chat.id
         uid = message.from_user.id
         if message.from_user.id == var_config.master_id:
-            service_init_table_for_chat(cid, uid, message.from_user.username)
+            db_func.db_transform2()
     except Exception as e:
         exc_logger.exception(e)
 
@@ -1501,6 +1508,7 @@ def processing_add_stat_info_to_db(message):
 def service_delete_old_bot_messages():
     global restart_flag
     while not restart_flag:
+        time.sleep(5)
         try:
             current_old_bot_messages = db_func.db_service_get_old_bot_messages(var_config.bot_message_swelling_time)
         except Exception as e:
@@ -1514,27 +1522,28 @@ def service_delete_old_bot_messages():
                     lenore.delete_message(row[1], row[2])
                 except Exception as e:
                     exc_logger.exception(e)
-        time.sleep(5)
+
 
 
 def service_reset_message_counters():
     global restart_flag
     while not restart_flag:
+        time.sleep(30)
         try:
             db_func.db_service_reset_message_counters_for_users()
         except Exception as e:
             exc_logger.exception(e)
-        time.sleep(30)
+
 
 
 def service_warn_swelling():
     global restart_flag
     while not restart_flag:
+        time.sleep(60)
         try:
             db_func.db_service_warn_swelling()
         except Exception as e:
             exc_logger.exception(e)
-        time.sleep(60)
 
 
 if __name__ == '__main__':

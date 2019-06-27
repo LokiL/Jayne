@@ -14,11 +14,17 @@ chats_for_echo_all = [1001254199480, # оргчат ПМ
                       1001328989582, # furnsfw
                       1001032838103, # FG
                       1001245949155] # AOBC chat
+
+#parameters
 master_id = 24978372
+
 bot_message_swelling_time = 90
-warn_swelling_time = 604800  # 604800 1 week
-automute_time = 3600 # seconds
-sticker_automute_limit = 60 # seconds
+#chat_fields_by_default
+default_warn_swelling_time = 604800  # 604800 1 week
+default_automute_time = 3600 # seconds
+default_sticker_automute_limit = 3 # for 15s
+
+
 
 # noinspection PyShadowingNames
 def service_get_chat_forwarding(cid):

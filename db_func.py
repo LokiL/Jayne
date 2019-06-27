@@ -106,41 +106,28 @@ def db_service_create_chat_table(cid):
         ban_count integer,
         achievements text,
         titles text)""".format('chat_' + str(cid)[1:] + '_users_info'))
-
-    # cursor.execute(
-    #     """CREATE TABLE IF NOT EXISTS {0}
-    #     (cid integer,
-    #     welcome_msg_default text,
-    #     welcome_msg_approved text,
-    #     welcome_msg_returning text,
-    #     voicemessages_restrict integer,
-    #     voicemessages_limit integer,
-    #     command_cooldown integer,
-    #     warn_limit_enabled integer,
-    #     warn_limit_count integer,
-    #     automute_duration integer
-    #     )""".format('chat_' + str(cid)[1:] + '_paramaters'))
+    cursor.execute("""INSERT INTO chats_parameters VALUES
+            (
+            '{chat_id}', '{chat_name}', '{chat_forward_to}', '{echo_all_avialable}',
+            '{welcome_msg_default}', '{welcome_msg_approved}', '{welcome_msg_returning}',
+            '{voicemessages_limit}', 
+            '{warn_swelling_time}', '{warn_automute_time}',
+            '{sticker_automute_limit}', '{sticker_automute_time}'
+            )""".format(chat_id=str(cid)[1:],
+                        chat_name='',
+                        chat_forward_to=0,
+                        echo_all_avialable=0,
+                        welcome_msg_default='',
+                        welcome_msg_approved='',
+                        welcome_msg_returning='',
+                        voicemessages_limit=0,
+                        warn_swelling_time=var_config.default_warn_swelling_time,
+                        warn_automute_time=var_config.default_automute_time,
+                        sticker_automute_limit=var_config.default_sticker_automute_limit,
+                        sticker_automute_time=var_config.default_automute_time))
     conn.commit()
 
 
-# def db_service_create_chat_parameters_table(cid):
-#     global conn
-#     cursor = conn.cursor()
-#     cursor.execute(
-#         """CREATE TABLE IF NOT EXISTS {0}
-#         (cid integer,
-#         welcome_msg_default text,
-#         welcome_msg_approved text,
-#         welcome_msg_returning text,
-#         voicemessages_restrict integer,
-#         voicemessages_limit integer,
-#         command_cooldown integer,
-#         warn_limit_enabled integer,
-#         warn_limit_count integer,
-#         automute_duration integer
-#         )""".format('chat_' + str(cid)[1:] + '_paramaters'))
-#
-#     conn.commit()
 
 
 def db_service_init_tech_tables():
@@ -201,12 +188,6 @@ def db_service_init_tech_tables():
         pin integer,
         chmod integer,
         resync integer)""")
-    cursor.execute(
-        """CREATE TABLE IF NOT EXISTS antibot_welcome_messages (
-        cid integer,
-        welcome_msg_default text,
-        welcome_msg_approved text,
-        welcome_msg_returning text)""")
     cursor.execute("""SELECT count(*) FROM sqlite_master WHERE type='table' AND name='tech_message_count_reset_date'""")
     if not cursor.fetchone()[0] == 1:
         cursor.execute(
@@ -221,8 +202,92 @@ def db_service_init_tech_tables():
     if not cursor.fetchone()[0] == 1:
         cursor.execute("""CREATE TABLE IF NOT EXISTS restart_daemon_check(flag integer, cid integer, mid integer)""")
         cursor.execute("""INSERT INTO restart_daemon_check VALUES ('0', '0', '0')""")
+
+    cursor.execute("""SELECT count(*) FROM sqlite_master WHERE type='table' AND name='chats_parameters'""")
+    if not cursor.fetchone()[0] == 1:
+        cursor.execute(
+            """CREATE TABLE IF NOT EXISTS chats_parameters
+            (cid integer,
+            chat_name text,
+            chat_forward_to integer,
+            echo_all_avialable integer, 
+            welcome_msg_default text,
+            welcome_msg_approved text,
+            welcome_msg_returning text,
+            voicemessages_limit integer,
+            warn_swelling_time integer,
+            warn_automute_time integer,
+            sticker_automute_limit integer,
+            sticker_automute_time integer
+            )""")
     conn.commit()
 
+
+####temp function####
+def db_transform2():
+    global conn
+    cursor = conn.cursor()
+    chatlist = db_tech_get_all_chat_tables_list()
+    for foo in chatlist:
+        chat_id = foo.split('_')
+
+        cursor.execute("""INSERT INTO chats_parameters VALUES
+        (
+        '{cid}', '{chat_name}', '{chat_forward_to}', '{echo_all_avialable}',
+        '{welcome_msg_default}', '{welcome_msg_approved}', '{welcome_msg_returning}',
+        '{voicemessages_limit}', 
+        '{warn_swelling_time}', '{warn_automute_time}',
+        '{sticker_automute_limit}', '{sticker_automute_time}'
+        )""".format(cid = chat_id[1],
+                    chat_name = '',
+                    chat_forward_to = 0,
+                    echo_all_avialable = 0,
+                    welcome_msg_default = '',
+                    welcome_msg_approved = '',
+                    welcome_msg_returning = '',
+                    voicemessages_limit = 0,
+                    warn_swelling_time = var_config.default_warn_swelling_time,
+                    warn_automute_time = var_config.default_automute_time,
+                    sticker_automute_limit = var_config.default_sticker_automute_limit,
+                    sticker_automute_time = 60))
+    conn.commit()
+    cursor.execute("""SELECT * FROM antibot_welcome_messages""")
+    data = cursor.fetchall()
+    for chat in data:
+        cid = chat[0]
+        welcome_msg_default = chat[1]
+        welcome_msg_approved = chat[2]
+        welcome_msg_returning = chat[3]
+        cursor.execute("""UPDATE chats_parameters
+        SET welcome_msg_default = '{0}',
+        welcome_msg_approved = '{1}',
+        welcome_msg_returning = '{2}'
+        WHERE cid = '{3}'
+        """.format(welcome_msg_default, welcome_msg_approved, welcome_msg_returning, cid))
+    for chat in var_config.chats_for_echo_all:
+        cursor.execute("""UPDATE chats_parameters
+                SET echo_all_avialable = 1
+                WHERE cid = {0}""".format(int(chat)))
+    for foo in chatlist:
+        chat_id = foo.split('_')
+        if var_config.service_get_chat_forwarding('-'+chat_id[1]) is not False:
+            cursor.execute("""UPDATE chats_parameters
+            SET chat_forward_to = '{0}'
+            WHERE cid = '{1}'""".format(var_config.service_get_chat_forwarding('-'+chat_id[1])[1:], chat_id[1]))
+        cursor.execute("""SELECT uid, rights FROM {0}""".format(foo))
+        data = cursor.fetchall()
+        for user in data:
+            if user[0] == var_config.master_id:
+                cursor.execute("""UPDATE {0} 
+                SET rights = '{1}'
+                WHERE uid = '{2}'""".format(foo, int(str(user[1])+'1'), user[0]))
+            else:
+                cursor.execute("""UPDATE {0} 
+                                SET rights = '{1}'
+                                WHERE uid = '{2}'""".format(foo, int(str(user[1]) + '0'), user[0]))
+    cursor.execute("""DROP TABLE antibot_welcome_messages""")
+    print('finished')
+    conn.commit()
 
 def db_service_check_chat_table_exists(cid):
     global conn
@@ -265,7 +330,7 @@ def db_stat_add_new_user(cid, uid, username):
     '{34}','{35}','{36}', '{37}', '{38}', '{39}'
     )""".format('chat_' + str(cid)[1:] + '_users_info',
                 uid, username, current_time, current_time,
-                current_time, 10000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                current_time, 100000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0, '', ''))
     cursor.execute("""INSERT INTO comm_usage VALUES (
     '{0}','{1}', 
@@ -337,6 +402,8 @@ def db_service_check_user_have_rights(cid, uid, right):
     elif right == 'resync' and rights[6] == 1:
         res = True
     elif right == 'set_antibot' and rights[7] == 1:
+        res = True
+    elif right == 'chat_config' and rights[8] == 1:
         res = True
 
     return res
@@ -688,7 +755,10 @@ def db_service_warn_swelling():
     """)
     warns_data = cursor.fetchall()
     for warn in warns_data:
-        if current_time - warn[1] > var_config.warn_swelling_time:
+        cursor.execute("""SELECT warn_swelling_time FROM chats_parameters WHERE cid = '{0}'""".format(warn[2]))
+        warn_swelling_time_for_current_chat = cursor.fetchone()[0]
+        print(warn_swelling_time_for_current_chat)
+        if current_time - warn[1] > warn_swelling_time_for_current_chat:
             db_mod_remove_last_warn_for_user('-' + str(warn[2]), warn[3])
     return warns_data
 
@@ -707,13 +777,22 @@ def db_stat_get_top_flooders(cid, limit=5, duration='a', msg_type='msg'):
     # 'chat_' + str(cid)[1:] + '_users_info'
     return data
 
+def db_service_get_warn_automute_time(cid):
+    global conn
+    cursor = conn.cursor()
+    cursor.execute(
+    """SELECT warn_automute_time
+    FROM chats_parameters
+    WHERE cid = '{0}'""".format(str(cid)[1:]))
+    data = cursor.fetchone()[0]
+    return data
 
 def db_service_get_antibot_welcome_messages(cid):
     global conn
     cursor = conn.cursor()
     cursor.execute("""
     SELECT cid, welcome_msg_default, welcome_msg_approved, welcome_msg_returning
-    FROM antibot_welcome_messages
+    FROM chats_parameters
     WHERE cid = '{0}'
     """.format(str(cid)[1:]))
     data = cursor.fetchone()
@@ -731,86 +810,29 @@ def db_mod_set_antibot_welcome_messages(cid, rm=False,
     cursor = conn.cursor()
     cursor.execute("""
         SELECT cid, welcome_msg_default, welcome_msg_approved, welcome_msg_returning
-        FROM antibot_welcome_messages
+        FROM chats_parameters
         WHERE cid = '{0}'
         """.format(str(cid)[1:]))
     data = cursor.fetchone()
     if not rm:
-        if data is not None:
-            cursor.execute("""
-            UPDATE antibot_welcome_messages 
-            SET welcome_msg_default='{1}',
-            welcome_msg_approved='{2}',
-            welcome_msg_returning='{3}'
-            WHERE cid = '{0}'
-            """.format(str(cid)[1:], welcome_msg_default, welcome_msg_approved, welcome_msg_returning))
-            conn.commit()
-            return True
-        else:
-            cursor.execute("""
-                    INSERT INTO antibot_welcome_messages VALUES( 
-                    '{0}', '{1}', '{2}', '{3}'
-                    )
-                    """.format(str(cid)[1:], welcome_msg_default, welcome_msg_approved, welcome_msg_returning))
-            conn.commit()
-            return True
-    else:
-        if data is not None:
-            cursor.execute("""DELETE FROM antibot_welcome_messages
-            WHERE ROWID in
-            (
-            SELECT ROWID FROM antibot_welcome_messages WHERE cid = '{0}'
-            )""".format(str(cid)[1:]))
-            conn.commit()
-            return True
-        else:
-            return False
-
-
-def db_add_welcomes():
-    global conn
-    cursor = conn.cursor()
-    list = [[-1001444879250,
-             "Добро пожаловать в чат Пушистой Москвы, {name}! {lb}Пожалуйста, нажми 🦐, чтобы подтвердить, что ты не бот.",
-             "Привет, {name}!{lb}Добро пожаловать в чат Пушистой Москвы!{lb}У нас можно найти: разные тусовки, клевое общение и ламповую обстановку.{lb}Но у нас есть правила и их стоит соблюдать:{lb} https://telegra.ph/Pushistaya-Moskva-Pravila-03-11",
-             "С возвращением в чат Пушистой Москвы, {name}! {lb}Мы скучали! Ну, большинство из нас. Наверно :D"],
-            [-1001457973105,
-             "Добро пожаловать в уголок разврата - afterdark-чат Пушистой Москвы, {name}! {lb}Нажми на 🦐, чтобы подтвердить, что тебе есть 18 лет и что ты не бот.",
-             "Что ж, нажатием ты подтвердил, что имеешь право тут находиться, {name}!{lb}Рекомендую ознакомиться с правилами: https://telegra.ph/Fur-Moscow--Afterdark-18-06-13",
-             "С возвращением в уголок разврата - afterdark-чат Пушистой Москвы, {name}! {lb}Ты очень многое пропустил ;)"],
-            [-1001032838103,
-             "Добро пожаловать в Furry Gamers, {name}! {lb}Пожалуйста, нажми 🦐, чтобы подтвердить, что ты не бот.",
-             "Добро пожаловать в Furry Gamers, {name}! {lb}Чатик создан для обсуждения игр и всего, что с ними связано. {lb}Умеренный флуд и оффтопик допустимы, но не скатывайся.{lb}Уровень модерации и форма правления - просвещенная диктатура.{lb}Все варны субъективны и выдаются по желанию левой пятки, зависят от Луны в Водолее.{lb}В целом правило одно — каждый имеет право на свое личное мнение.{lb}Добавлять в чат можно и нужно, но помните о том, что написано выше и ниже.{lb}И one more thing — чат в основном фурревый и nsfw.",
-             "С возвращением в Furry Gamers, {name}! {lb}Мы скучали! Ну, большинство из нас. Наверно :D"],
-            [-1001085305161,
-             "Добро пожаловать в #Vaporspace (SFW) (RU), {name}! {lb}Пожалуйста, нажми 🦐, чтобы подтвердить, что ты не бот.",
-             "Что ж, ты не бот, {name}! {lb}Помним о тематике чата и ведем себя хорошо~",
-             "С возвращением в #Vaporspace (SFW) (RU), {name}! {lb}Мы скучали! Ну, большинство из нас. Наверно :D"],
-            [-1001080419111,
-             "Добро пожаловать в чат SG Club. Не забудь прочитать правила :){lb}https://telegra.ph/A-menya-ne-zabanyat-03-10 {lb}Чтобы подтвердить, что ты не бот - нажми креветочку.",
-             "Спасибо, верификация успешно пройдена! {lb}Правила: https://telegra.ph/A-menya-ne-zabanyat-03-10",
-             "С возвращением в чат SG Club!"],
-            [-1001328989582,
-             "Добро пожаловать в Фурри-чатик (NSFW) +18, {name}! {lb}Пожалуйста, нажми на 🦐, чтобы подтвердить, что тебе есть 18 лет и что ты не бот.",
-             "Спасибо, верификация успешно пройдена! Веди себя хорошо и будь някой :3 {lb}Правила: https://telegra.ph/Furri-chatik-NSFW-pravila-06-22",
-             "С возвращением в уютный Фурри-чатик! :3"],
-            [-1001295499832,
-             "Добро пожаловать в furry > /dev/null, чатик для фуррей-программистов и сочувствующих, {name}! {lb}Пожалуйста, нажми 🦐, чтобы подтвердить, что ты не бот.",
-             "Спасибо, верификация успешно пройдена! Веди себя хорошо и будь някой :3 {lb}Помним, no porn, no politics.",
-             "С возвращением в нашу уютную программерскую флудилку, {name} :3"],
-            [-1001060563829,
-             "Добро пожаловать в GG&G, {name}! {lb}Пожалуйста, нажми 🦐, чтобы подтвердить, что ты не бот.",
-             "Спасибо, {name}, верификация успешно пройдена! Рады приветствовать в чате GG&G.{lb}Расскажи немного о себе: откуда, сколько лет и чем увлекаешься.{lb}Наш чат без цензуры - @gay_gamers",
-             "Опачки, да вы поглядите, {name} снова с нами. С возвращением, бродяга!"]]
-    for chat in list:
         cursor.execute("""
-                    INSERT INTO antibot_welcome_messages VALUES (
-                    '{0}',
-                    '{1}',
-                    '{2}',
-                    '{3}')
-                    """.format(str(chat[0])[1:], chat[1], chat[2], chat[3]))
-    conn.commit()
+        UPDATE chats_parameters 
+        SET welcome_msg_default='{1}',
+        welcome_msg_approved='{2}',
+        welcome_msg_returning='{3}'
+        WHERE cid = '{0}'
+        """.format(str(cid)[1:], welcome_msg_default, welcome_msg_approved, welcome_msg_returning))
+        conn.commit()
+    else:
+        cursor.execute("""
+                    UPDATE chats_parameters 
+                    SET welcome_msg_default='',
+                    welcome_msg_approved='',
+                    welcome_msg_returning=''
+                    WHERE cid = '{0}'
+                    """.format(str(cid)[1:]))
+        conn.commit()
+
 
 
 def db_service_add_bot_message(cid, message):
