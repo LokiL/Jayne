@@ -711,19 +711,23 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     last_midnight = int(time.mktime(d.timetuple()))
 
     #get unixtime of last monday
-
+    d = today - datetime.timedelta(days=today.weekday())
+    last_monday = int(time.mktime(d.timetuple()))
 
     #get unixtime of last 1st month fday
+    last_first_day = datetime.datetime.today().replace(day=1, hour=0, minute=0)
 
     global conn
     cursor = conn.cursor()
     # monthly
     cursor.execute("""SELECT reset_time_month FROM tech_message_count_reset_date""")
     data = cursor.fetchone()
-    if current_time - int(data[0]) > 2592000:
+    # if current_time - int(data[0]) > 2592000:
+    if current_time - int(data[0]) > 2591900:
         chats_for_work = db_tech_get_all_chat_tables_list()
-        prev_first_day = time.mktime(today.replace(day=1).timetuple()) + 10800
-        cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(prev_first_day))
+        # prev_first_day = time.mktime(today.replace(day=1).timetuple()) + 10800
+        # cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(prev_first_day))
+        cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(last_first_day))
         conn.commit()
         for table in chats_for_work:
             cursor.execute("""UPDATE {0} SET m_{1}=0""".format(table, msg_type))
@@ -731,12 +735,14 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     # weekly
     cursor.execute("""SELECT reset_time_week FROM tech_message_count_reset_date""")
     data = cursor.fetchone()
-    if current_time - int(data[0]) > 604800:
-        time_offset = today + datetime.timedelta(-today.weekday(), weeks=0)
-        prev_monday_date_unixtime = time.mktime(time_offset.timetuple()) + 10800
+    # if current_time - int(data[0]) > 604800:
+    #     time_offset = today + datetime.timedelta(-today.weekday(), weeks=0)
+    #     prev_monday_date_unixtime = time.mktime(time_offset.timetuple()) + 10800
+    if current_time - int(data[0]) > 604700:
         chats_for_work = db_tech_get_all_chat_tables_list()
         cursor.execute(
-            """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(prev_monday_date_unixtime))
+            # """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(prev_monday_date_unixtime))
+            """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(last_monday))
         conn.commit()
         for table in chats_for_work:
             cursor.execute("""UPDATE {0} SET w_{1}=0""".format(table, msg_type))
