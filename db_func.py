@@ -686,7 +686,6 @@ def db_stat_update_user_command_count(cid, uid, command_type):
         table = 'comm_usage'
     if command_type in ['warn', 'mute', 'ban', 'pin', 'chmod', 'resync']:
         table = 'mod_comm_usage'
-        print(table)
     cursor.execute("""
     SELECT a_comm, {0}
     FROM {1}
@@ -706,6 +705,16 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     today = datetime.date.today()
     # msg_type can be msg, stickers, photos, audio, videomessages, voicemessages, files
     current_time = int(time.time())
+
+    #get unixtime of last midnight
+    d = datetime.datetime.combine(today, datetime.time.min)
+    last_midnight = time.mktime(d.timetuple())
+
+    #get unixtime of last monday
+
+
+    #get unixtime of last 1st month fday
+
     global conn
     cursor = conn.cursor()
     # monthly
@@ -713,7 +722,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     data = cursor.fetchone()
     if current_time - int(data[0]) > 2592000:
         chats_for_work = db_tech_get_all_chat_tables_list()
-        prev_first_day = time.mktime(datetime.date.today().replace(day=1, hour=0, minute=0).timetuple()) + 10800
+        prev_first_day = time.mktime(today.replace(day=1).timetuple()) + 10800
         cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(prev_first_day))
         conn.commit()
         for table in chats_for_work:
@@ -737,7 +746,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     cursor.execute("""SELECT reset_time_day FROM tech_message_count_reset_date""")
     data = cursor.fetchone()
     if current_time - int(data[0]) > 86400:
-        last_midnight = (int(time.time() // 86400)) * 86400
+        # last_midnight = (int(time.time() // 86400)) * 86400
         chats_for_work = db_tech_get_all_chat_tables_list()
         cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_day='{0}'""".format(last_midnight))
         conn.commit()
@@ -757,7 +766,6 @@ def db_service_warn_swelling():
     for warn in warns_data:
         cursor.execute("""SELECT warn_swelling_time FROM chats_parameters WHERE cid = '{0}'""".format(warn[2]))
         warn_swelling_time_for_current_chat = cursor.fetchone()[0]
-        print(warn_swelling_time_for_current_chat)
         if current_time - warn[1] > warn_swelling_time_for_current_chat:
             db_mod_remove_last_warn_for_user('-' + str(warn[2]), warn[3])
     return warns_data

@@ -1128,8 +1128,6 @@ def mod_ban(message):
         cid = message.chat.id  # ид чата
         uid = message.from_user.id  # ид отдающего команду
         mid = message.message_id  # id сообщения с командой
-
-        print(message)
         if not db_func.db_service_check_user_exists(cid, uid):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
 
@@ -1418,12 +1416,15 @@ def tech_get_tech(message):
 ### Запуск таблицы для чата
 ###
 @lenore.message_handler(commands=['init'])
-def tech_init_table_for_chat(message):
+def tech_init(message):
     try:
         cid = message.chat.id
         uid = message.from_user.id
         if message.from_user.id == var_config.master_id:
+            lenore.reply_to(message, "Конвертирую базу...")
             db_func.db_transform2()
+            lenore.reply_to(message, "Конвертация завершена.")
+
     except Exception as e:
         exc_logger.exception(e)
 
