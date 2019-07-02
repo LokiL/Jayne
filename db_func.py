@@ -708,7 +708,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
 
     #get unixtime of last midnight
     d = datetime.datetime.combine(today, datetime.time.min)
-    last_midnight = time.mktime(d.timetuple())
+    last_midnight = int(time.mktime(d.timetuple()))
 
     #get unixtime of last monday
 

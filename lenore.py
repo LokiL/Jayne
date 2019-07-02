@@ -1405,7 +1405,7 @@ def tech_get_tech(message):
                 uid = message.from_user.id
             else:
                 uid = message.reply_to_message.from_user.id
-            infostring = "UID: {0}\nCID: {1}\n".format(uid, cid)
+            infostring = "UID: {0}\nCID: {1}\n".format(uid, message.chat.id)
             db_func.db_service_add_bot_message(cid, lenore.send_message(cid, infostring))
     except Exception as e:
         lenore.send_message(cid, e)
