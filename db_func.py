@@ -713,7 +713,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     data = cursor.fetchone()
     if current_time - int(data[0]) > 2592000:
         chats_for_work = db_tech_get_all_chat_tables_list()
-        prev_first_day = time.mktime(datetime.today().replace(day=1, hour=0, minute=0).timetuple()) + 10800
+        prev_first_day = time.mktime(datetime.date.today().replace(day=1, hour=0, minute=0).timetuple()) + 10800
         cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(prev_first_day))
         conn.commit()
         for table in chats_for_work:
