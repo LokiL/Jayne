@@ -762,7 +762,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
             cursor.execute("""UPDATE {0} 
             SET d_{1}=0""".format(table, msg_type))
         conn.commit()
-        output_message += "Reset  Daily messages; "
+        output_message += "Reset Daily messages; "
     return output_message
 
 

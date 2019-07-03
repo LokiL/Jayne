@@ -169,7 +169,7 @@ def processing_anti_bot(message):
         else:
             incoming_user_name = info_get_current_username(cid, message.new_chat_member.id)
             foo = db_func.db_service_get_antibot_welcome_messages(cid)
-            if foo is not '':
+            if foo[1] is not '':
                 if db_func.db_service_check_user_exists(cid, message.new_chat_member.id):
                     db_func.db_stat_update_user_last_return(cid, message.new_chat_member.id)
                     welcome_message = foo[3].format(name=incoming_user_name, lb='\n')
@@ -183,6 +183,8 @@ def processing_anti_bot(message):
                     antibot_markup = InlineKeyboardMarkup()
                     antibot_markup.add(InlineKeyboardButton("🦐", callback_data=approve_data))
                     lenore.send_message(cid, welcome_message, reply_markup=antibot_markup)
+            else:
+                db_func.db_stat_add_new_user(cid, message.new_chat_member.id, incoming_user_name)
     except Exception as e:
         exc_logger.exception(e)
 
