@@ -3,9 +3,8 @@
 
 import sqlite3
 import time
-import datetime
 import var_config
-
+import var_func
 
 def db_service_database_path(db_path):
     global database
@@ -128,8 +127,6 @@ def db_service_create_chat_table(cid):
     conn.commit()
 
 
-
-
 def db_service_init_tech_tables():
     global conn
     cursor = conn.cursor()
@@ -238,18 +235,18 @@ def db_transform2():
         '{voicemessages_limit}', 
         '{warn_swelling_time}', '{warn_automute_time}',
         '{sticker_automute_limit}', '{sticker_automute_time}'
-        )""".format(cid = chat_id[1],
-                    chat_name = '',
-                    chat_forward_to = 0,
-                    echo_all_avialable = 0,
-                    welcome_msg_default = '',
-                    welcome_msg_approved = '',
-                    welcome_msg_returning = '',
-                    voicemessages_limit = 0,
-                    warn_swelling_time = var_config.default_warn_swelling_time,
-                    warn_automute_time = var_config.default_automute_time,
-                    sticker_automute_limit = var_config.default_sticker_automute_limit,
-                    sticker_automute_time = 60))
+        )""".format(cid=chat_id[1],
+                    chat_name='',
+                    chat_forward_to=0,
+                    echo_all_avialable=0,
+                    welcome_msg_default='',
+                    welcome_msg_approved='',
+                    welcome_msg_returning='',
+                    voicemessages_limit=0,
+                    warn_swelling_time=var_config.default_warn_swelling_time,
+                    warn_automute_time=var_config.default_automute_time,
+                    sticker_automute_limit=var_config.default_sticker_automute_limit,
+                    sticker_automute_time=60))
     conn.commit()
     cursor.execute("""SELECT * FROM antibot_welcome_messages""")
     data = cursor.fetchall()
@@ -270,17 +267,17 @@ def db_transform2():
                 WHERE cid = {0}""".format(int(chat)))
     for foo in chatlist:
         chat_id = foo.split('_')
-        if var_config.service_get_chat_forwarding('-'+chat_id[1]) is not False:
+        if var_config.service_get_chat_forwarding('-' + chat_id[1]) is not False:
             cursor.execute("""UPDATE chats_parameters
             SET chat_forward_to = '{0}'
-            WHERE cid = '{1}'""".format(var_config.service_get_chat_forwarding('-'+chat_id[1])[1:], chat_id[1]))
+            WHERE cid = '{1}'""".format(var_config.service_get_chat_forwarding('-' + chat_id[1])[1:], chat_id[1]))
         cursor.execute("""SELECT uid, rights FROM {0}""".format(foo))
         data = cursor.fetchall()
         for user in data:
             if user[0] == var_config.master_id:
                 cursor.execute("""UPDATE {0} 
                 SET rights = '{1}'
-                WHERE uid = '{2}'""".format(foo, int(str(user[1])+'1'), user[0]))
+                WHERE uid = '{2}'""".format(foo, int(str(user[1]) + '1'), user[0]))
             else:
                 cursor.execute("""UPDATE {0} 
                                 SET rights = '{1}'
@@ -288,6 +285,7 @@ def db_transform2():
     cursor.execute("""DROP TABLE antibot_welcome_messages""")
     print('finished')
     conn.commit()
+
 
 def db_service_check_chat_table_exists(cid):
     global conn
@@ -330,7 +328,8 @@ def db_stat_add_new_user(cid, uid, username):
     '{34}','{35}','{36}', '{37}', '{38}', '{39}'
     )""".format('chat_' + str(cid)[1:] + '_users_info',
                 uid, username, current_time, current_time,
-                current_time, 100000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                current_time, 100000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0,
                 0, 0, 0, 0, '', ''))
     cursor.execute("""INSERT INTO comm_usage VALUES (
     '{0}','{1}', 
@@ -701,64 +700,70 @@ def db_stat_update_user_command_count(cid, uid, command_type):
     conn.commit()
 
 
+def db_service_reset_message_counters(countertype, new_timer, msg_type='msg'):
+    # countertype can be day, week, month
+    # msg_type can be msg, stickers, photos, audio, videomessages, voicemessages, files
+    chats_for_work = db_tech_get_all_chat_tables_list()
+    global conn
+    cursor = conn.cursor()
+    cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_{0}='{1}'""".format(countertype, new_timer))
+    for table in chats_for_work:
+        cursor.execute("""UPDATE {0} SET m_{1}=0""".format(table, msg_type))
+    conn.commit()
+
+
 def db_service_reset_message_counters_for_users(msg_type='msg'):
-    today = datetime.date.today()
     # msg_type can be msg, stickers, photos, audio, videomessages, voicemessages, files
     current_time = int(time.time())
-
-    #get unixtime of last midnight
-    d = datetime.datetime.combine(today, datetime.time.min)
-    last_midnight = int(time.mktime(d.timetuple()))
-
-    #get unixtime of last monday
-    d = today - datetime.timedelta(days=today.weekday())
-    last_monday = int(time.mktime(d.timetuple()))
-
-    #get unixtime of last 1st month fday
-    last_first_day = datetime.datetime.today().replace(day=1, hour=0, minute=0)
+    current_triggers = var_func.check_triggers_for_timestamp(current_time)
 
     global conn
     cursor = conn.cursor()
+    chats_for_work = db_tech_get_all_chat_tables_list()
+    cursor.execute("""SELECT 
+    reset_time_month, 
+    reset_time_week, 
+    reset_time_day 
+    FROM tech_message_count_reset_date""")
+    data = cursor.fetchone()
+    stored_trigger_month = var_func.check_triggers_for_timestamp(int(data[0]))[2]
+    stored_trigger_week = var_func.check_triggers_for_timestamp(int(data[1]))[1]
+    stored_trigger_day = var_func.check_triggers_for_timestamp(int(data[2]))[0]
+    output_message = "Counters not resetted: time doesn't passed"
     # monthly
-    cursor.execute("""SELECT reset_time_month FROM tech_message_count_reset_date""")
-    data = cursor.fetchone()
-    # if current_time - int(data[0]) > 2592000:
-    if current_time - int(data[0]) > 2591900:
-        chats_for_work = db_tech_get_all_chat_tables_list()
-        # prev_first_day = time.mktime(today.replace(day=1).timetuple()) + 10800
-        # cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(prev_first_day))
-        cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_month='{0}'""".format(last_first_day))
-        conn.commit()
-        for table in chats_for_work:
-            cursor.execute("""UPDATE {0} SET m_{1}=0""".format(table, msg_type))
-            conn.commit()
-    # weekly
-    cursor.execute("""SELECT reset_time_week FROM tech_message_count_reset_date""")
-    data = cursor.fetchone()
-    # if current_time - int(data[0]) > 604800:
-    #     time_offset = today + datetime.timedelta(-today.weekday(), weeks=0)
-    #     prev_monday_date_unixtime = time.mktime(time_offset.timetuple()) + 10800
-    if current_time - int(data[0]) > 604700:
-        chats_for_work = db_tech_get_all_chat_tables_list()
+    if current_triggers[2] != stored_trigger_month:
         cursor.execute(
-            # """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(prev_monday_date_unixtime))
-            """UPDATE tech_message_count_reset_date SET reset_time_week='{0}'""".format(last_monday))
-        conn.commit()
+            """UPDATE tech_message_count_reset_date 
+            SET reset_time_month='{0}'""".format(var_func.get_first_day_of_month()))
         for table in chats_for_work:
-            cursor.execute("""UPDATE {0} SET w_{1}=0""".format(table, msg_type))
-            conn.commit()
+            cursor.execute("""UPDATE {0} 
+            SET m_{1}=0""".format(table, msg_type))
+        conn.commit()
+        output_message = "Monthly counters resetted"
+
+    # weekly
+    if current_triggers[1] != stored_trigger_week:
+        cursor.execute(
+            """UPDATE tech_message_count_reset_date 
+            SET reset_time_week='{0}'""".format(var_func.get_last_monday()))
+        for table in chats_for_work:
+            cursor.execute("""UPDATE {0} 
+            SET w_{1}=0""".format(table, msg_type))
+        conn.commit()
+        output_message = "Weekly counters resetted"
 
     # daily
-    cursor.execute("""SELECT reset_time_day FROM tech_message_count_reset_date""")
-    data = cursor.fetchone()
-    if current_time - int(data[0]) > 86400:
-        # last_midnight = (int(time.time() // 86400)) * 86400
-        chats_for_work = db_tech_get_all_chat_tables_list()
-        cursor.execute("""UPDATE tech_message_count_reset_date SET reset_time_day='{0}'""".format(last_midnight))
-        conn.commit()
+    if current_triggers[0] != stored_trigger_day:
+        cursor.execute(
+            """UPDATE tech_message_count_reset_date 
+            SET reset_time_day='{0}'""".format(var_func.get_last_midnight()))
         for table in chats_for_work:
-            cursor.execute("""UPDATE {0} SET d_{1}=0""".format(table, msg_type))
-            conn.commit()
+            cursor.execute("""UPDATE {0} 
+            SET d_{1}=0""".format(table, msg_type))
+        conn.commit()
+        output_message = "Daily counters resetted"
+    return output_message
+
 
 
 def db_service_warn_swelling():
@@ -791,15 +796,17 @@ def db_stat_get_top_flooders(cid, limit=5, duration='a', msg_type='msg'):
     # 'chat_' + str(cid)[1:] + '_users_info'
     return data
 
+
 def db_service_get_warn_automute_time(cid):
     global conn
     cursor = conn.cursor()
     cursor.execute(
-    """SELECT warn_automute_time
-    FROM chats_parameters
-    WHERE cid = '{0}'""".format(str(cid)[1:]))
+        """SELECT warn_automute_time
+        FROM chats_parameters
+        WHERE cid = '{0}'""".format(str(cid)[1:]))
     data = cursor.fetchone()[0]
     return data
+
 
 def db_service_get_antibot_welcome_messages(cid):
     global conn
@@ -846,7 +853,6 @@ def db_mod_set_antibot_welcome_messages(cid, rm=False,
                     WHERE cid = '{0}'
                     """.format(str(cid)[1:]))
         conn.commit()
-
 
 
 def db_service_add_bot_message(cid, message):

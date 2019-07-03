@@ -1,21 +1,21 @@
 #!/usr/bin/python3
 # coding=utf-8
+import argparse
+import atexit
+import datetime
+import logging
 import os
 import re
 import signal
 import sys
 import time
-import argparse
 from datetime import datetime
-from multiprocessing import Process, freeze_support
-import logging
 from logging.handlers import TimedRotatingFileHandler
-import atexit
-import datetime
+from multiprocessing import Process, freeze_support
 
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from telebot import apihelper
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 import db_func
 import var_config
@@ -1526,12 +1526,13 @@ def service_delete_old_bot_messages():
 
 
 
+
 def service_reset_message_counters():
     global restart_flag
     while not restart_flag:
         time.sleep(30)
         try:
-            db_func.db_service_reset_message_counters_for_users()
+            info_logger.debug(db_func.db_service_reset_message_counters_for_users())
         except Exception as e:
             exc_logger.exception(e)
 
@@ -1551,8 +1552,8 @@ if __name__ == '__main__':
     freeze_support()
     DeleteOldJayneMessages = Process(target=service_delete_old_bot_messages, args=())
     DeleteOldJayneMessages.start()
-    # ResetMessageCounters = Process(target=service_reset_message_counters, args=())
-    # ResetMessageCounters.start()
+    ResetMessageCounters = Process(target=service_reset_message_counters, args=())
+    ResetMessageCounters.start()
     WarnsSwelling = Process(target=service_warn_swelling, args=())
     WarnsSwelling.start()
 
