@@ -1533,7 +1533,7 @@ def service_reset_message_counters():
         time.sleep(30)
         try:
             output = db_func.db_service_reset_message_counters_for_users()
-            if output != "Counters resetted:":
+            if output != "":
                 info_logger.debug(output)
         except Exception as e:
             exc_logger.exception(e)
