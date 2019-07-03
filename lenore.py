@@ -1532,7 +1532,9 @@ def service_reset_message_counters():
     while not restart_flag:
         time.sleep(30)
         try:
-            info_logger.debug(db_func.db_service_reset_message_counters_for_users())
+            output = db_func.db_service_reset_message_counters_for_users()
+            if output != "Counters resetted:":
+                info_logger.debug(output)
         except Exception as e:
             exc_logger.exception(e)
 
