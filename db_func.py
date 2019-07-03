@@ -6,6 +6,7 @@ import time
 import var_config
 import var_func
 
+
 def db_service_database_path(db_path):
     global database
     database = db_path
@@ -729,7 +730,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
     stored_trigger_month = var_func.check_triggers_for_timestamp(int(data[0]))[2]
     stored_trigger_week = var_func.check_triggers_for_timestamp(int(data[1]))[1]
     stored_trigger_day = var_func.check_triggers_for_timestamp(int(data[2]))[0]
-    output_message = "Counters not resetted: time doesn't passed"
+    output_message = "Counters resetted: "
     # monthly
     if current_triggers[2] != stored_trigger_month:
         cursor.execute(
@@ -739,7 +740,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
             cursor.execute("""UPDATE {0} 
             SET m_{1}=0""".format(table, msg_type))
         conn.commit()
-        output_message = "Monthly counters resetted"
+        output_message += "Monthly"
 
     # weekly
     if current_triggers[1] != stored_trigger_week:
@@ -750,7 +751,7 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
             cursor.execute("""UPDATE {0} 
             SET w_{1}=0""".format(table, msg_type))
         conn.commit()
-        output_message = "Weekly counters resetted"
+        output_message += "Weekly"
 
     # daily
     if current_triggers[0] != stored_trigger_day:
@@ -761,9 +762,8 @@ def db_service_reset_message_counters_for_users(msg_type='msg'):
             cursor.execute("""UPDATE {0} 
             SET d_{1}=0""".format(table, msg_type))
         conn.commit()
-        output_message = "Daily counters resetted"
+        output_message += "Daily"
     return output_message
-
 
 
 def db_service_warn_swelling():

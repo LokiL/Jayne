@@ -3,12 +3,14 @@
 import time
 import datetime
 
+
 def get_last_midnight():
     today = datetime.date.today()
     mintime = datetime.time.min
     midnight = datetime.datetime.combine(today, mintime)
     return int(time.mktime(midnight.timetuple()))
     # return (int(time.time() // 86400)) * 86400
+
 
 def get_last_monday():
     today = datetime.date.today()
@@ -19,6 +21,7 @@ def get_last_monday():
 def get_first_day_of_month():
     first_day_of_month = datetime.date.today().replace(day=1)
     return int(time.mktime(first_day_of_month.timetuple()))
+
 
 def check_triggers_for_timestamp(trigger_ts):
     hform_date = datetime.date.fromtimestamp(trigger_ts)
