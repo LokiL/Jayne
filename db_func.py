@@ -885,15 +885,56 @@ def db_service_delete_old_bot_message(rowid):
                 WHERE ROWID = {0}""".format(rowid))
     conn.commit()
 
-
-def add_mid_column_into_bot_messages_once():
+def db_service_enable_echo_all_for_chat(cid):
     global conn
     cursor = conn.cursor()
-    cursor.execute("""
-    ALTER TABLE bot_messages ADD COLUMN mid integer
-    """)
-    conn.commit()
-    return 'Created'
+    cursor.execute(
+        """SELECT echo_all_avialable 
+        FROM chats_parameters
+        WHERE cid = '{0}'""".format(str(cid)[1:]))
+    data = cursor.fetchone()[0]
+    if data == 1:
+        cursor.execute("""
+            UPDATE chats_parameters
+            SET echo_all_avialable = '0'
+            WHERE cid = '{0}'""".format(str(cid)[1:]))
+        conn.commit()
+        return "Chat echo_all disabled"
+    if data == 0:
+        cursor.execute("""
+                    UPDATE chats_parameters
+                    SET echo_all_avialable = '1'
+                    WHERE cid = '{0}'""".format(str(cid)[1:]))
+        conn.commit()
+        return "Chat echo_all enabled"
+
+def db_service_set_chat_name(cid, chat_name):
+    global conn
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT chat_name 
+        FROM chats_parameters
+        WHERE cid = '{0}'""".format(str(cid)[1:]))
+    output = ""
+    data = cursor.fetchone()[0]
+    if data == '' or chat_name != data:
+        cursor.execute("""
+                            UPDATE chats_parameters
+                            SET chat_name = '{0}'
+                            WHERE cid = '{1}'""".format(chat_name, str(cid)[1:]))
+        conn.commit()
+        output = "Chat {0} renamed for {1}, was {2}".format(cid, chat_name, data)
+    return output
+
+#
+# def add_mid_column_into_bot_messages_once():
+#     global conn
+#     cursor = conn.cursor()
+#     cursor.execute("""
+#     ALTER TABLE bot_messages ADD COLUMN mid integer
+#     """)
+#     conn.commit()
+#     return 'Created'
 
 
 #########################################################################################

@@ -29,7 +29,7 @@ parser.add_argument('--proxy', action='store', help='HTTP(S) Proxy in format [lo
 args = parser.parse_args()
 
 bot_token = args.token  # Lenore token
-lenore = telebot.TeleBot(bot_token)
+Jayne = telebot.TeleBot(bot_token)
 
 db_func.db_service_database_path(args.db_file)
 db_func.db_service_database_conn_open()
@@ -75,9 +75,9 @@ restart_flag = False
 def service_warn_automute_deco(muted, cid, muter, reason="Automute"):
     try:
         mute_until = int(time.time()) + db_func.db_service_get_warn_automute_time(cid)
-        lenore.restrict_chat_member(cid, muted,
-                                    mute_until, False, False,
-                                    False, False)
+        Jayne.restrict_chat_member(cid, muted,
+                                   mute_until, False, False,
+                                   False, False)
         db_func.db_mod_increase_mute_count_for_user(muted, cid, db_func.db_service_get_warn_automute_time(cid), muter, reason)
         info_logger.debug("Automute for " + str(muted) + " from " + str(muter) + " in " + str(cid) + " for: " + reason)
         return True
@@ -90,7 +90,7 @@ if db_func.db_service_check_restart_trigger_table_exists():
         if db_func.db_service_get_restart_trigger()[0] == 1:
             cid = db_func.db_service_get_restart_trigger()[1]
             mid = db_func.db_service_get_restart_trigger()[2]
-            db_func.db_service_add_bot_message(cid, lenore.send_message(cid,
+            db_func.db_service_add_bot_message(cid, Jayne.send_message(cid,
                                                                         'Синхронизация завершена. Новый код успешно запущен.'))
             db_func.db_service_restart_daemon_trigger(cid, mid)
     except Exception as e:
@@ -103,7 +103,7 @@ def service_init_table_for_chat(cid, uid, username):
         db_func.db_stat_add_new_user(cid, uid, username)
         db_func.db_mod_set_chmod_for_user(cid, uid, 11111111)
         try:
-            lenore.send_message(cid, 'Таблица {0} создана успешно.\n'
+            Jayne.send_message(cid, 'Таблица {0} создана успешно.\n'
                                      '{1} получил полный доступ к функциям бота.\n'
                                      'Для успешного функционирования мне нужны права:\n'
                                      '- удаление сообщений;\n'
@@ -117,7 +117,7 @@ def service_init_table_for_chat(cid, uid, username):
 
     else:
         try:
-            lenore.send_message(cid, 'О, а этот чатик я знаю!'.format())
+            Jayne.send_message(cid, 'О, а этот чатик я знаю!'.format())
         except Exception as e:
             exc_logger.exception(e)
             pass
@@ -133,7 +133,7 @@ def check_user_is_admin(user_id, chat_id):
     :return:
     :rtype: Bool
     """
-    foo = lenore.get_chat_administrators(chat_id)
+    foo = Jayne.get_chat_administrators(chat_id)
     current_chat_administrators = []
     for user in foo:
         tmp = user.user.id
@@ -145,7 +145,7 @@ def check_user_is_admin(user_id, chat_id):
 
 
 def info_get_current_username(chat_id, user_id):
-    foo = lenore.get_chat_member(chat_id, user_id).user
+    foo = Jayne.get_chat_member(chat_id, user_id).user
     if foo.username is not None:
         bar = '@' + foo.username
     else:
@@ -159,11 +159,11 @@ def info_get_current_username(chat_id, user_id):
 ###
 ### Обработка новых пользователей
 ###
-@lenore.message_handler(content_types=["new_chat_members"])
+@Jayne.message_handler(content_types=["new_chat_members"])
 def processing_anti_bot(message):
     try:
         cid = message.chat.id
-        bot_id = lenore.get_me()
+        bot_id = Jayne.get_me()
         if bot_id.id == message.new_chat_member.id:
             service_init_table_for_chat(cid, message.from_user.id, message.from_user.first_name)
         else:
@@ -173,16 +173,16 @@ def processing_anti_bot(message):
                 if db_func.db_service_check_user_exists(cid, message.new_chat_member.id):
                     db_func.db_stat_update_user_last_return(cid, message.new_chat_member.id)
                     welcome_message = foo[3].format(name=incoming_user_name, lb='\n')
-                    lenore.send_message(cid, welcome_message)
+                    Jayne.send_message(cid, welcome_message)
                 else:
                     welcome_message = foo[1].format(name=incoming_user_name, lb='\n')
-                    lenore.restrict_chat_member(cid, message.new_chat_member.id, int(time.time()), False,
-                                                False,
-                                                False, False)
+                    Jayne.restrict_chat_member(cid, message.new_chat_member.id, int(time.time()), False,
+                                               False,
+                                               False, False)
                     approve_data = str(message.new_chat_member.id)
                     antibot_markup = InlineKeyboardMarkup()
                     antibot_markup.add(InlineKeyboardButton("🦐", callback_data=approve_data))
-                    lenore.send_message(cid, welcome_message, reply_markup=antibot_markup)
+                    Jayne.send_message(cid, welcome_message, reply_markup=antibot_markup)
             else:
                 db_func.db_stat_add_new_user(cid, message.new_chat_member.id, incoming_user_name)
     except Exception as e:
@@ -193,7 +193,7 @@ def processing_anti_bot(message):
 ### Обрабатываем /rate
 ###
 # noinspection PyShadowingNames
-@lenore.message_handler(content_types=['photo'])
+@Jayne.message_handler(content_types=['photo'])
 def all_rate_photo(message):
     try:
         uid = message.from_user.id
@@ -207,11 +207,11 @@ def all_rate_photo(message):
             db_func.db_stat_update_user_message_count(cid, uid)
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.caption == '/rate':
-                lenore.delete_message(cid, message.message_id)
-                file_info = lenore.get_file(message.photo[len(message.photo) - 1].file_id)
+                Jayne.delete_message(cid, message.message_id)
+                file_info = Jayne.get_file(message.photo[len(message.photo) - 1].file_id)
                 rate_markup = InlineKeyboardMarkup()
                 rate_markup.row_width = 1
                 callback_upvote = 'upvote_photo_{0}_{1}'.format(0, 0)
@@ -219,13 +219,13 @@ def all_rate_photo(message):
                 rate_markup.add(InlineKeyboardButton("0 👍", callback_data=callback_upvote),
                                 InlineKeyboardButton("0 👎", callback_data=callback_downvote))
                 photo_caption = '{0} запостил фото на оценку!✨'.format(username)
-                lenore.send_photo(cid, file_info.file_id, caption=photo_caption, reply_markup=rate_markup)
+                Jayne.send_photo(cid, file_info.file_id, caption=photo_caption, reply_markup=rate_markup)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.callback_query_handler(func=lambda call: True)
+@Jayne.callback_query_handler(func=lambda call: True)
 def callback_inline(call):
     try:
         # noinspection PyShadowingNames
@@ -236,12 +236,12 @@ def callback_inline(call):
             foo = db_func.db_service_get_antibot_welcome_messages(cid)
             if foo is not False:
                 welcome_message = foo[2].format(name=call.from_user.first_name, lb='\n')
-                lenore.edit_message_text(welcome_message, call.message.chat.id, mid)
-            lenore.answer_callback_query(callback_query_id=call.id, show_alert=True, text="Верификация пройдена")
+                Jayne.edit_message_text(welcome_message, call.message.chat.id, mid)
+            Jayne.answer_callback_query(callback_query_id=call.id, show_alert=True, text="Верификация пройдена")
             incoming_user_name = info_get_current_username(cid, call.from_user.id)
             db_func.db_stat_add_new_user(cid, call.from_user.id, incoming_user_name)
-            lenore.restrict_chat_member(call.message.chat.id, call.from_user.id, int(time.time()), True, True, True,
-                                        True)
+            Jayne.restrict_chat_member(call.message.chat.id, call.from_user.id, int(time.time()), True, True, True,
+                                       True)
 
         splitted_call = call.data.split('_')
         if splitted_call[0] == 'upvote' or splitted_call[0] == 'downvote':
@@ -279,11 +279,11 @@ def callback_inline(call):
                     upvoted_rate_markup.add(
                         InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
                         InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
-                    lenore.edit_message_caption(
+                    Jayne.edit_message_caption(
                         '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
                         call.message.chat.id, call.message.message_id)
-                    lenore.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=upvoted_rate_markup)
-                    lenore.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
+                    Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=upvoted_rate_markup)
+                    Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
 
                 elif splitted_call[0] == 'downvote':
                     downvoted_rate_markup = InlineKeyboardMarkup()
@@ -303,15 +303,15 @@ def callback_inline(call):
                         InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
                         InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
 
-                    lenore.edit_message_caption(
+                    Jayne.edit_message_caption(
                         '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
                         call.message.chat.id, call.message.message_id)
-                    lenore.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=downvoted_rate_markup)
-                    lenore.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Downvoted")
+                    Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=downvoted_rate_markup)
+                    Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Downvoted")
             else:
-                lenore.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Ты уже проголосовал!")
+                Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Ты уже проголосовал!")
     except Exception as e:
-        lenore.send_message(call.chat.id, e)
+        Jayne.send_message(call.chat.id, e)
         exc_logger.exception(e)
 
 
@@ -319,7 +319,7 @@ def callback_inline(call):
 ### Команды на действия, доступные всем
 ###
 
-@lenore.message_handler(commands=['userinfo'])
+@Jayne.message_handler(commands=['userinfo'])
 def all_userinfo(message):
     try:
         cid = message.chat.id
@@ -332,7 +332,7 @@ def all_userinfo(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, message.from_user.id, 'userinfo')
             user_rights_readable = []
@@ -375,13 +375,13 @@ def all_userinfo(message):
                 user_rights_readable[6],
                 user_rights_readable[7],
                 user_rights_readable[8])
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, userinfo_msg, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, userinfo_msg, parse_mode='Markdown'))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['slap'])
+@Jayne.message_handler(commands=['slap'])
 def all_slap(message):
     try:
         cid = message.chat.id
@@ -391,26 +391,26 @@ def all_slap(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'slap')
             spl = message.text.split(' ')
-            lenore.delete_message(cid, message.message_id)
+            Jayne.delete_message(cid, message.message_id)
             user_from = info_get_current_username(cid, uid)
             msg_text = ''
             if len(spl) == 1:
                 msg_text += user_from + ' slaps himself around a bit with a large trout'
-                lenore.send_message(cid, msg_text)
+                Jayne.send_message(cid, msg_text)
             else:
                 user_slapped = spl[1]
                 msg_text += user_from + ' slaps ' + user_slapped + ' around a bit with a large trout'
-                lenore.send_message(cid, msg_text)
+                Jayne.send_message(cid, msg_text)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['me'])
+@Jayne.message_handler(commands=['me'])
 def all_me_action(message):
     try:
         cid = message.chat.id
@@ -420,29 +420,29 @@ def all_me_action(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'me')
 
             spl = message.text.split(' ')
-            lenore.delete_message(cid, message.message_id)
+            Jayne.delete_message(cid, message.message_id)
             user_from = info_get_current_username(cid, uid)
             me_action_text = ''
             if len(spl) == 1:
                 me_action_text += user_from + ' делает что-то подозрительное...'
-                lenore.send_message(cid, me_action_text)
+                Jayne.send_message(cid, me_action_text)
             else:
                 user_action = ' '.join(spl[1:])
                 me_action_text += user_from + ' ' + user_action
-                lenore.send_message(cid, me_action_text)
+                Jayne.send_message(cid, me_action_text)
 
 
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['topmsg'])
+@Jayne.message_handler(commands=['topmsg'])
 def all_topmsg(message):
     try:
         cid = message.chat.id
@@ -452,21 +452,21 @@ def all_topmsg(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'topmsg')
             output = 'Топ-5 флудеров группы за все время:\n'
             for data in db_func.db_stat_get_top_flooders(cid):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output, parse_mode='Markdown'))
 
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['topweeklymsg'])
+@Jayne.message_handler(commands=['topweeklymsg'])
 def all_topweeklymsg(message):
     try:
         cid = message.chat.id
@@ -475,21 +475,21 @@ def all_topweeklymsg(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'topweeklymsg')
             output = 'Топ-5 флудеров группы за неделю:\n'
             for data in db_func.db_stat_get_top_flooders(cid, duration='w'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output, parse_mode='Markdown'))
 
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['topdailymsg'])
+@Jayne.message_handler(commands=['topdailymsg'])
 def all_topdailymsg(message):
     try:
         cid = message.chat.id
@@ -498,20 +498,20 @@ def all_topdailymsg(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'topdailymsg')
             output = 'Топ-5 флудеров группы за день:\n'
             for data in db_func.db_stat_get_top_flooders(cid, duration='d'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['topmonthlymsg'])
+@Jayne.message_handler(commands=['topmonthlymsg'])
 def all_topmonthlymsg(message):
     try:
         cid = message.chat.id
@@ -520,20 +520,20 @@ def all_topmonthlymsg(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'topmonthlymsg')
             output = 'Топ-5 флудеров группы за месяц:\n'
             for data in db_func.db_stat_get_top_flooders(cid, duration='m'):
                 foo = "`{0}` - `{1}`\n".format(data[0], data[1])
                 output += foo
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, output, parse_mode='Markdown'))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output, parse_mode='Markdown'))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['report'])
+@Jayne.message_handler(commands=['report'])
 def all_report(message):
     try:
         cid = message.chat.id  # ид чата
@@ -542,10 +542,10 @@ def all_report(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         'Команду возможно использовать только ответом на сообщение!'))
             else:
                 db_func.db_stat_update_user_command_count(cid, uid, 'report')
@@ -557,13 +557,13 @@ def all_report(message):
                     chat_link = 't.me/' + message.chat.username
 
                 if not var_config.service_get_chat_forwarding(cid):
-                    lenore.reply_to(message.reply_to_message, '@niohisi, тут в чатике что-то не так!')
+                    Jayne.reply_to(message.reply_to_message, '@niohisi, тут в чатике что-то не так!')
 
                 else:
-                    lenore.reply_to(message.reply_to_message, 'Сообщение передано модераторам.')
-                    lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid,
-                                           rmid)
-                    lenore.send_message(var_config.service_get_chat_forwarding(cid),
+                    Jayne.reply_to(message.reply_to_message, 'Сообщение передано модераторам.')
+                    Jayne.forward_message(var_config.service_get_chat_forwarding(cid), cid,
+                                          rmid)
+                    Jayne.send_message(var_config.service_get_chat_forwarding(cid),
                                         '`{0}` жалуется на сообщение `{1}` в чате {2} ({3})'.format(
                                             info_get_current_username(cid, uid),
                                             info_get_current_username(cid, ruid),
@@ -574,7 +574,7 @@ def all_report(message):
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['lenorehelp'])
+@Jayne.message_handler(commands=['lenorehelp'])
 def all_lenorehelp(message):
     help_text = """Команды бота:
 /report - жалоба на сообщение (реплаем);
@@ -603,11 +603,11 @@ def all_lenorehelp(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, help_text))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, help_text))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
@@ -615,7 +615,7 @@ def all_lenorehelp(message):
 ### Правила
 ###
 
-@lenore.message_handler(commands=['rules'])
+@Jayne.message_handler(commands=['rules'])
 def link_rules_GG(message):
     try:
         cid = message.chat.id
@@ -627,102 +627,102 @@ def link_rules_GG(message):
 4. Никаких спойлеров или обсуждений главных сюжетных развитий игр, сериалов, фильмов и подобного контента, дабы не угасить чужой интерес и сохранить интригу. 
 5. Запрещена реклама в любом виде. 
 6. Никаких виртуальных секс-переписок и домогательств."""
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, rules_text))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, rules_text))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
 ###
 ### Линки на чатики
 ###
-@lenore.message_handler(commands=['afterdark'])
+@Jayne.message_handler(commands=['afterdark'])
 def link_afterdark(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
             available_chats = [-1001457973105, -1001444879250]
             if message.chat.id in available_chats:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         'Ссылка на afterdark-чат Пушистой Москвы. Внимание, чат 18+!: \n'
                                                                         'https://t.me/joinchat/AX0jxAwS6vipAuCUL0ickw'))
             else:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         'Прошу прощения, запрос этой ссылки работает только из основного чата ПМ'))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['furrygamers'])
+@Jayne.message_handler(commands=['furrygamers'])
 def link_furrygamers(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, 'Ссылка на Furry gamers [RU] [18+]: \n'
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на Furry gamers [RU] [18+]: \n'
                                                                              'https://t.me/FurryGS'))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['msk_fur'])
+@Jayne.message_handler(commands=['msk_fur'])
 def link_msk_fur(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, 'Ссылка на чат "Пушистая Москва": \n'
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на чат "Пушистая Москва": \n'
                                                                              'https://t.me/msk_fur'))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['vapefur'])
+@Jayne.message_handler(commands=['vapefur'])
 def link_vapefur(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message, 'Ссылка на #Vaporspace (SFW) (RU): \n'
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на #Vaporspace (SFW) (RU): \n'
                                                                              'https://t.me/vapefur'))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
 # furry > /dev/null
-@lenore.message_handler(commands=['furcoding'])
+@Jayne.message_handler(commands=['furcoding'])
 def link_furrydevnull(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
-            db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                     'Ссылка на чат русскоязычных фуррей-программистов "furry > /dev/null": \n'
                                                                     'https://t.me/joinchat/AX0jxE03wjga3qUDUnQ-Aw'))
         else:
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['eww'])
+@Jayne.message_handler(commands=['eww'])
 def all_eww(message):
     try:
         cid = message.chat.id  # ид чата
@@ -731,24 +731,24 @@ def all_eww(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'eww')
             dn = os.path.dirname(os.path.realpath(__file__))
             fn = os.path.join(dn, "eww.mp4")
             f = open(fn, 'rb')
             if message.reply_to_message is None:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_document(cid, f)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_document(cid, f)
             else:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_document(cid, f, message.reply_to_message.message_id)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_document(cid, f, message.reply_to_message.message_id)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['usuka'])
+@Jayne.message_handler(commands=['usuka'])
 def all_usuka(message):
     try:
         cid = message.chat.id  # ид чата
@@ -757,24 +757,24 @@ def all_usuka(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'usuka')
             dn = os.path.dirname(os.path.realpath(__file__))
             fn = os.path.join(dn, "usuka.webp")
             f = open(fn, 'rb')
             if message.reply_to_message is None:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_sticker(cid, f)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_sticker(cid, f)
             else:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_sticker(cid, f, message.reply_to_message.message_id)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_sticker(cid, f, message.reply_to_message.message_id)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['wtfisgoingon'])
+@Jayne.message_handler(commands=['wtfisgoingon'])
 def all_wtfisgoingon(message):
     try:
         cid = message.chat.id  # ид чата
@@ -783,25 +783,25 @@ def all_wtfisgoingon(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'wtfisgoingon')
             dn = os.path.dirname(os.path.realpath(__file__))
             fn = os.path.join(dn, "wtfisgoingon.jpg")
             f = open(fn, 'rb')
             if message.reply_to_message is None:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_photo(cid, f, caption='')
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_photo(cid, f, caption='')
             else:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_photo(cid, f, caption='', reply_to_message_id=message.reply_to_message.message_id)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_photo(cid, f, caption='', reply_to_message_id=message.reply_to_message.message_id)
 
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['badumtss'])
+@Jayne.message_handler(commands=['badumtss'])
 def mod_badumtss(message):
     try:
         cid = message.chat.id  # ид чата
@@ -810,20 +810,20 @@ def mod_badumtss(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             db_func.db_stat_update_user_command_count(cid, uid, 'badumtss')
             dn = os.path.dirname(os.path.realpath(__file__))
             fn = os.path.join(dn, "badumtss.png")
             f = open(fn, 'rb')
             if message.reply_to_message is None:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_sticker(cid, f)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_sticker(cid, f)
             else:
-                lenore.delete_message(cid, message.message_id)
-                lenore.send_sticker(cid, f, message.reply_to_message.message_id)
+                Jayne.delete_message(cid, message.message_id)
+                Jayne.send_sticker(cid, f, message.reply_to_message.message_id)
     except Exception as e:
-        lenore.send_message(message.chat.id, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
@@ -832,7 +832,7 @@ def mod_badumtss(message):
 ###
 
 
-@lenore.message_handler(commands=['warn'])
+@Jayne.message_handler(commands=['warn'])
 def mod_warn(message):
     try:
         cid = message.chat.id  # ид чата
@@ -841,21 +841,21 @@ def mod_warn(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'warn'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         'Команду возможно использовать только ответом на сообщение!'))
             else:
                 ruid = message.reply_to_message.from_user.id  # id юзера, на сообщение которого реплаят
                 rmid = message.reply_to_message.message_id  # id сообщения, на которое реплаят
                 if check_user_is_admin(ruid, cid) or uid == ruid:
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                             "I'm sorry Dave, I'm afraid I can't do that."))
                 else:
                     spl = str(message.text).split(' ')
                     if len(spl) == 1 or (len(spl) == 2 and spl[1] == 'rm'):
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 "Неверный синтаксис команды, бака!\n"
                                                                                 "Правильно: /warn [причина] или /warn rm [причина]"))
                     else:
@@ -874,6 +874,12 @@ def mod_warn(message):
                         if not db_func.db_service_check_user_exists(cid, ruid):
                             db_func.db_stat_add_new_user(cid, ruid, warned_user_naming)
                         current_warn_count = db_func.db_mod_increase_warn_count_for_user(cid, ruid, uid, reason)
+                        info_logger.debug("{0} наложил варн #{1} на {2} в чате {3}, причина: {4}".format(
+                            info_get_current_username(cid, uid),
+                            current_warn_count,
+                            warned_user_naming,
+                            message.chat.title,
+                            reason))
                         if current_warn_count < 3:
                             warn_message = "{0}, предупреждение!\nПричина: {1}\n" \
                                            "Всего варнов: {2}\n" \
@@ -903,19 +909,19 @@ def mod_warn(message):
                                 message.chat.title,
                                 chat_link, reason, current_warn_count, str(datetime.timedelta(seconds=warn_automute_time)))
                         if not var_config.service_get_chat_forwarding(cid):
-                            lenore.reply_to(message.reply_to_message, warn_message)
+                            Jayne.reply_to(message.reply_to_message, warn_message)
                         else:
-                            lenore.reply_to(message.reply_to_message, warn_message)
-                            lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
-                            lenore.send_message(var_config.service_get_chat_forwarding(cid), info_message_text,
-                                                disable_web_page_preview=True)
+                            Jayne.reply_to(message.reply_to_message, warn_message)
+                            Jayne.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
+                            Jayne.send_message(var_config.service_get_chat_forwarding(cid), info_message_text,
+                                               disable_web_page_preview=True)
                         if rm_msg_flag:
-                            lenore.delete_message(cid, rmid)
+                            Jayne.delete_message(cid, rmid)
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['chmod'])
+@Jayne.message_handler(commands=['chmod'])
 def mod_chmod(message):
     # all_actions_allowed, limited_actions_allowed, warn_func, mute_func, ban_func, pin_func, can_change_rights
     try:
@@ -925,19 +931,19 @@ def mod_chmod(message):
         if not db_func.db_service_check_user_exists(cid, uid):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not check_user_is_admin(uid, cid):
-            lenore.delete_message(cid, mid)
+            Jayne.delete_message(cid, mid)
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that.\nКоманда должна быть дана реплаем"))
             else:
                 if not db_func.db_service_check_user_have_rights(cid, uid, 'chmod'):
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                             "I'm sorry Dave, I'm afraid I can't do that.\nУ тебя нет доступа на изменение прав."))
                 else:
                     command = str(message.text).split(' ')
                     if not re.match(r'[01]{9}\Z', command[1]):
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 "I'm sorry Dave, I'm afraid I can't do that.\nНекорректный синтаксис. /chmod [nnnnnnnnn], где n=0 или 1"))
                     else:
                         db_func.db_stat_update_user_command_count(cid, uid, 'chmod')
@@ -957,7 +963,7 @@ def mod_chmod(message):
                                 user_rights_readable_new.append('✅')
                             else:
                                 user_rights_readable_new.append('❌')
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 "Права успешно изменены для {0}:\n" \
                                                                                 "{1} > {2} - общие действия\n" \
                                                                                 "{3} > {4} - варны\n" \
@@ -993,7 +999,7 @@ def mod_chmod(message):
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['set_antibot'])
+@Jayne.message_handler(commands=['set_antibot'])
 def mod_set_antibot(message):
     try:
         cid = message.chat.id  # ид чата
@@ -1003,21 +1009,21 @@ def mod_set_antibot(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not check_user_is_admin(uid, cid):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if not db_func.db_service_check_user_have_rights(cid, uid, 'set_antibot'):
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that.\nУ тебя нет доступа на управление антиботом."))
             else:
                 spl_command = message.text.split(' ')
                 if spl_command[1] == 'rm':
                     db_func.db_mod_set_antibot_welcome_messages(cid, rm=True)
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message, "Антибот успешно отключен"))
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, "Антибот успешно отключен"))
                 else:
                     raw_welcomes = ' '.join(spl_command[1:])
                     clean_welcomes = raw_welcomes.split('|')
                     if len(clean_welcomes) != 3:
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 "Неверный синтаксис: /set_antibot welcome_msg_default|welcome_msg_approved|welcome_msg_returning"))
                     else:
                         db_func.db_mod_set_antibot_welcome_messages(cid,
@@ -1033,14 +1039,14 @@ def mod_set_antibot(message):
                                      "Сообщение для старого пользователя:\n" \
                                      "`{2}`".format(setted[1], setted[2], setted[3])
                         db_func.db_service_add_bot_message(cid,
-                                                           lenore.reply_to(message, reply_text, parse_mode='Markdown'))
+                                                           Jayne.reply_to(message, reply_text, parse_mode='Markdown'))
 
 
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['mute'])
+@Jayne.message_handler(commands=['mute'])
 def mod_mute(message):
     try:
         cid = message.chat.id  # ид чата
@@ -1049,16 +1055,16 @@ def mod_mute(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'mute'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         'Команду возможно использовать только ответом на сообщение!'))
             else:
                 ruid = message.reply_to_message.from_user.id  # id юзера, на сообщение которого реплаят
                 rmid = message.reply_to_message.message_id  # id сообщения, на которое реплаят
                 if check_user_is_admin(ruid, cid) or uid == ruid:
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                             'Невозможно наложить мут на того, кто сильнее меня, я простой бот. :('))
                 else:
                     if not db_func.db_service_check_user_exists(cid, ruid):  # проверяем наличие цели молчанки
@@ -1066,7 +1072,7 @@ def mod_mute(message):
 
                     command = str(message.text).split(' ')
                     if not re.match(r'((\d*\s)([dmh])(\s)(.*))', ' '.join(command[1:])):
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 'Неверный синтаксис команды, бака!\n'
                                                                                 'Правильно: /mute [time] [m/d/h] [причина]'))
                     else:
@@ -1086,15 +1092,24 @@ def mod_mute(message):
                             mute_reason = ' '.join(command[3:])
 
                         mute_until = int(time.time()) + mute_time
-                        lenore.restrict_chat_member(cid, ruid,
-                                                    mute_until, False, False,
-                                                    False, False)
+                        Jayne.restrict_chat_member(cid, ruid,
+                                                   mute_until, False, False,
+                                                   False, False)
+
                         db_func.db_mod_increase_mute_count_for_user(ruid, cid, mute_time, uid, mute_reason)
 
                         muted_user_naming = info_get_current_username(cid, ruid)
                         mute_ending_date = str(datetime.utcfromtimestamp(int(mute_until + 10800)).strftime(
                             '%Y-%m-%d %H:%M:%S'))
-                        lenore.reply_to(message.reply_to_message, "Поздравляю, {0}! "
+
+                        info_logger.debug("{0} замутил {1} до {2} в чате {3}, причина: {4}".format(
+                            info_get_current_username(cid, uid),
+                            muted_user_naming,
+                            mute_until,
+                            message.chat.title,
+                            mute_reason))
+
+                        Jayne.reply_to(message.reply_to_message, "Поздравляю, {0}! "
                                                                   "На тебя наложена молчанка до {1}\n"
                                                                   "Причина (если еще не понятно): {2}".format(
                             muted_user_naming,
@@ -1115,16 +1130,16 @@ def mod_mute(message):
                                 chat_link,
                                 mute_reason)
 
-                            lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
-                            lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
-                                                disable_web_page_preview=True)
+                            Jayne.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
+                            Jayne.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
+                                               disable_web_page_preview=True)
                         if rm_msg_flag:
-                            lenore.delete_message(cid, rmid)
+                            Jayne.delete_message(cid, rmid)
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['ban'])
+@Jayne.message_handler(commands=['ban'])
 def mod_ban(message):
     try:
         cid = message.chat.id  # ид чата
@@ -1135,22 +1150,22 @@ def mod_ban(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'ban'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that."))
             else:
                 rmid = message.reply_to_message.message_id  # id
                 ruid = message.reply_to_message.from_user.id
                 if check_user_is_admin(ruid, cid) or uid == ruid:
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message, 'Админа нельзя забанить.'))
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Админа нельзя забанить.'))
                 else:
                     command = str(message.text).split(' ')
                     kicked_user_naming = info_get_current_username(cid, ruid)
                     if not len(command) > 1:
                         db_func.db_service_add_bot_message(cid,
-                                                           lenore.reply_to(message, 'Необходимо указать причину бана!'))
+                                                           Jayne.reply_to(message, 'Необходимо указать причину бана!'))
                     else:
                         rm_msg_flag = False
                         if command[1] == 'rm':
@@ -1158,7 +1173,12 @@ def mod_ban(message):
                             kick_reason = ' '.join(command[2:])
                         else:
                             kick_reason = ' '.join(command[1:])
-                        lenore.kick_chat_member(cid, ruid)
+                        Jayne.kick_chat_member(cid, ruid)
+                        info_logger.debug("{0} забанил {1} в чате {2}, причина: {3}".format(
+                            info_get_current_username(cid, uid),
+                            kicked_user_naming,
+                            message.chat.title,
+                            kick_reason))
                         db_func.db_stat_update_user_command_count(cid, uid, 'ban')
                         if not db_func.db_service_check_user_exists(cid, ruid):
                             db_func.db_stat_add_new_user(cid, ruid, kicked_user_naming)
@@ -1168,7 +1188,7 @@ def mod_ban(message):
 
                         kick_text = """{0} был забанен. \nПричина бана: {1}""".format(kicked_user_naming,
                                                                                       kick_reason)
-                        lenore.reply_to(message, kick_text)
+                        Jayne.reply_to(message, kick_text)
 
                         if var_config.service_get_chat_forwarding(cid):
                             if message.chat.username is None:
@@ -1180,16 +1200,16 @@ def mod_ban(message):
                                 kicked_user_naming,
                                 message.chat.title,
                                 chat_link, kick_reason)
-                            lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
-                            lenore.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
-                                                disable_web_page_preview=True)
+                            Jayne.forward_message(var_config.service_get_chat_forwarding(cid), cid, rmid)
+                            Jayne.send_message(var_config.service_get_chat_forwarding(cid), forward_message_text,
+                                               disable_web_page_preview=True)
                         if rm_msg_flag:
-                            lenore.delete_message(cid, rmid)
+                            Jayne.delete_message(cid, rmid)
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['nullifywarn'])
+@Jayne.message_handler(commands=['nullifywarn'])
 def mod_nullify_warn(message):
     try:
         cid = message.chat.id
@@ -1199,12 +1219,12 @@ def mod_nullify_warn(message):
                 db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
             if db_func.db_service_check_user_have_rights(cid, uid, 'warn'):
                 if message.reply_to_message is None:
-                    lenore.delete_message(cid, message.message_id)
+                    Jayne.delete_message(cid, message.message_id)
                 else:
                     ruid = message.reply_to_message.from_user.id  # получаем цель, которую варним
 
                     if check_user_is_admin(ruid, cid):  # проверяем цель на админа
-                        lenore.delete_message(cid, message.message_id)
+                        Jayne.delete_message(cid, message.message_id)
                     else:  # если не админ  # удаляем исходное сообщение
                         unwarned_user_naming = info_get_current_username(cid, ruid)  # получаем видимое имя пользователя
 
@@ -1231,35 +1251,35 @@ def mod_nullify_warn(message):
                                         chat_link)
                                     # если чата нет в списке на форвард, просто отправляем сообщение
                                     if not var_config.service_get_chat_forwarding(message.chat.id):
-                                        lenore.reply_to(message, nullify_message)
+                                        Jayne.reply_to(message, nullify_message)
                                     # если чат есть в списке на форвард - отправляем сообщение с анварном в чат и пересылаем куда надо
                                     else:
-                                        lenore.reply_to(message, nullify_message)
-                                        lenore.forward_message(var_config.service_get_chat_forwarding(message.chat.id),
-                                                               message.chat.id,
-                                                               message.reply_to_message.message_id)
-                                        lenore.send_message(var_config.service_get_chat_forwarding(message.chat.id),
-                                                            info_message_text)
+                                        Jayne.reply_to(message, nullify_message)
+                                        Jayne.forward_message(var_config.service_get_chat_forwarding(message.chat.id),
+                                                              message.chat.id,
+                                                              message.reply_to_message.message_id)
+                                        Jayne.send_message(var_config.service_get_chat_forwarding(message.chat.id),
+                                                           info_message_text)
                                 else:
-                                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                             'Юзер {0} в базе не зарегистрирован!'.format(
                                                                                                 unwarned_user_naming)))
                             else:
-                                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                         'Мне интересно, как ты собираешься снимать варны у {0}, если их вообще-то нет?'.format(
                                                                                             unwarned_user_naming)))
 
                         else:
-                            db_func.db_service_add_bot_message(cid, lenore.send_message(cid,
+                            db_func.db_service_add_bot_message(cid, Jayne.send_message(cid,
                                                                                         'Поскольку чат не в базе, варны не считаются и снять их невозможно.'))
             else:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that."))
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['removewarn'])
+@Jayne.message_handler(commands=['removewarn'])
 def mod_remove_warn(message):
     try:
         cid = message.chat.id
@@ -1269,27 +1289,27 @@ def mod_remove_warn(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'warn'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                         "I'm sorry Dave, I'm afraid I can't do that."))
             else:
                 ruid = message.reply_to_message.from_user.id
 
                 if check_user_is_admin(ruid, cid):
-                    db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                             "I'm sorry Dave, I'm afraid I can't do that."))
                 else:
                     unwarned_user_naming = info_get_current_username(cid, ruid)
 
                     if not db_func.db_service_check_user_exists(cid, ruid):
                         db_func.db_stat_add_new_user(cid, ruid, info_get_current_username(cid, ruid))
-                        db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                        db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                 "Юзера не было в базе до этого момента, откуда у него варны?"))
                     else:
                         if not db_func.db_mod_get_current_warn_info_for_user(cid, ruid)[0][0] > 0:
-                            db_func.db_service_add_bot_message(cid, lenore.reply_to(message,
+                            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                                     'Мне интересно, как ты собираешься снимать варны у {0}, если их вообще-то нет?'.format(
                                                                                         unwarned_user_naming)))
                         else:
@@ -1299,7 +1319,7 @@ def mod_remove_warn(message):
                                            'Текущее количество предупреждений: {1}'.format(unwarned_user_naming,
                                                                                            current_warn_count)
                             if not var_config.service_get_chat_forwarding(cid):
-                                lenore.reply_to(message, info_message)
+                                Jayne.reply_to(message, info_message)
 
                             else:
 
@@ -1312,16 +1332,16 @@ def mod_remove_warn(message):
                                     unwarned_user_naming,
                                     message.chat.title,
                                     chat_link)
-                                lenore.reply_to(message, info_message)
-                                lenore.forward_message(var_config.service_get_chat_forwarding(cid), cid,
-                                                       message.reply_to_message.message_id)
-                                lenore.send_message(var_config.service_get_chat_forwarding(cid),
-                                                    forward_message_text)
+                                Jayne.reply_to(message, info_message)
+                                Jayne.forward_message(var_config.service_get_chat_forwarding(cid), cid,
+                                                      message.reply_to_message.message_id)
+                                Jayne.send_message(var_config.service_get_chat_forwarding(cid),
+                                                   forward_message_text)
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['pin'])
+@Jayne.message_handler(commands=['pin'])
 def mod_pin(message):
     try:
         cid = message.chat.id
@@ -1330,22 +1350,22 @@ def mod_pin(message):
             db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
         if not db_func.db_service_check_user_have_rights(cid, uid, 'pin'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             if message.reply_to_message is None:
-                lenore.delete_message(cid, message.message_id)
+                Jayne.delete_message(cid, message.message_id)
             else:
                 ruid = message.reply_to_message.from_user.id
                 if not db_func.db_service_check_user_exists(cid, ruid):
                     db_func.db_stat_add_new_user(cid, ruid, info_get_current_username(cid, ruid))
-                lenore.pin_chat_message(cid, message.reply_to_message.message_id)
+                Jayne.pin_chat_message(cid, message.reply_to_message.message_id)
                 db_func.db_stat_update_user_command_count(cid, uid, 'pin')
 
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['unpin'])
+@Jayne.message_handler(commands=['unpin'])
 def mod_unpin(message):
     try:
         cid = message.chat.id
@@ -1355,10 +1375,10 @@ def mod_unpin(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'pin'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
-            lenore.delete_message(cid, message.message_id)
-            lenore.unpin_chat_message(cid)
+            Jayne.delete_message(cid, message.message_id)
+            Jayne.unpin_chat_message(cid)
 
     except Exception as e:
         exc_logger.exception(e)
@@ -1368,7 +1388,7 @@ def mod_unpin(message):
 ### Технические команды
 ###
 
-@lenore.message_handler(commands=['resync'])
+@Jayne.message_handler(commands=['resync'])
 def tech_resync(message):
     try:
         cid = message.chat.id
@@ -1379,12 +1399,12 @@ def tech_resync(message):
 
         if not db_func.db_service_check_user_have_rights(cid, uid, 'resync'):
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
         else:
             global restart_flag
             db_func.db_stat_update_user_command_count(cid, uid, 'resync')
             db_func.db_service_add_bot_message(cid,
-                                               lenore.reply_to(message,
+                                               Jayne.reply_to(message,
                                                                'Cинхронизация кода. Это займет несколько секунд.'))
             db_func.db_service_restart_daemon_trigger(cid, mid)
             restart_flag = True
@@ -1398,7 +1418,7 @@ def tech_resync(message):
 ###
 ### UID и CID
 ###
-@lenore.message_handler(commands=['get_tech'])
+@Jayne.message_handler(commands=['get_tech'])
 def tech_get_tech(message):
     try:
         cid = message.chat.id
@@ -1408,30 +1428,37 @@ def tech_get_tech(message):
             else:
                 uid = message.reply_to_message.from_user.id
             infostring = "UID: {0}\nCID: {1}\n".format(uid, message.chat.id)
-            db_func.db_service_add_bot_message(cid, lenore.send_message(cid, infostring))
+            db_func.db_service_add_bot_message(cid, Jayne.send_message(cid, infostring))
     except Exception as e:
-        lenore.send_message(cid, e)
+        Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
 
-###
-### Запуск таблицы для чата
-###
-@lenore.message_handler(commands=['init'])
-def tech_init(message):
+
+# @Jayne.message_handler(commands=['init'])
+# def tech_init(message):
+#     try:
+#         cid = message.chat.id
+#         uid = message.from_user.id
+#         if message.from_user.id == var_config.master_id:
+#             Jayne.reply_to(message, "Конвертирую базу...")
+#             db_func.db_transform2()
+#             Jayne.reply_to(message, "Конвертация завершена.")
+#
+#     except Exception as e:
+#         exc_logger.exception(e)
+
+@Jayne.message_handler(commands=['set_echo_all'])
+def tech_set_echo_all(message):
     try:
-        cid = message.chat.id
-        uid = message.from_user.id
         if message.from_user.id == var_config.master_id:
-            lenore.reply_to(message, "Конвертирую базу...")
-            db_func.db_transform2()
-            lenore.reply_to(message, "Конвертация завершена.")
-
+            cid = message.chat.id
+            Jayne.reply_to(message, db_func.db_service_enable_echo_all_for_chat(cid))
     except Exception as e:
         exc_logger.exception(e)
 
 
-@lenore.message_handler(commands=['echo_all'])
+@Jayne.message_handler(commands=['echo_all'])
 def tech_echo_all(message):
     try:
         spl = str(message.text).split(' ')
@@ -1441,25 +1468,23 @@ def tech_echo_all(message):
                 bar = str(foo).split('_')
                 if int(bar[1]) in var_config.chats_for_echo_all:
                     try:
-                        foo = lenore.send_message(int('-' + bar[1]), text_message)
-                        lenore.send_message(var_config.master_id, '{3}\n\nОтправлено в {0}, \n'
+                        foo = Jayne.send_message(int('-' + bar[1]), text_message)
+                        Jayne.send_message(var_config.master_id, '{3}\n\nОтправлено в {0}, \n'
                                                                   'линк: {1}\n'
                                                                   'CID: -{2}'.format(foo.chat.title, foo.chat.username,
                                                                                      bar[1], text_message))
 
                     except Exception as e:
                         exc_logger.exception(e)
-
-
     except Exception as e:
         exc_logger.exception(e)
 
 
-# @lenore.message_handler(commands=['init_new_alter'])
+# @Jayne.message_handler(commands=['init_new_alter'])
 # def tech_init_new_alter(message):
 #     try:
 #         if message.from_user.id == var_config.master_id:
-#             lenore.reply_to(message, db_func.add_mid_column_into_bot_messages_once())
+#             Jayne.reply_to(message, db_func.add_mid_column_into_bot_messages_once())
 #     except Exception as e:
 #         exc_logger.exception(e)
 
@@ -1467,17 +1492,17 @@ def tech_echo_all(message):
 ###
 ### Обработка войсов
 ###
-@lenore.message_handler(content_types=['voice'])
+@Jayne.message_handler(content_types=['voice'])
 def processing_detect_voice(message):
     try:
-        if not lenore.get_chat_member(message.chat.id, lenore.get_me().id).can_delete_messages:
+        if not Jayne.get_chat_member(message.chat.id, Jayne.get_me().id).can_delete_messages:
             pass
         else:
             cid = message.chat.id
             uid = message.from_user.id
             if not db_func.db_service_check_user_exists(cid, uid):
                 db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
-            lenore.delete_message(message.chat.id, message.message_id)
+            Jayne.delete_message(message.chat.id, message.message_id)
     except Exception as e:
         exc_logger.exception(e)
 
@@ -1486,20 +1511,25 @@ def processing_detect_voice(message):
 ### Сбор статистики
 ###
 
-@lenore.message_handler(content_types=['text'])
+@Jayne.message_handler(content_types=['text'])
 def processing_add_stat_info_to_db(message):
     try:
         if message.chat.type != 'private':
             uid = message.from_user.id
             cid = message.chat.id
+
+            set_chat_name_output = db_func.db_service_set_chat_name(cid, message.chat.title)
+            if set_chat_name_output != "":
+                info_logger.debug(set_chat_name_output)
+
             username = info_get_current_username(cid, uid)
             if not db_func.db_service_check_user_exists(cid, uid):
                 db_func.db_stat_add_new_user(cid, uid, username)
                 db_func.db_stat_update_user_message_count(cid, uid)
             else:
                 db_func.db_stat_update_user_message_count(cid, uid)
-                if lenore.get_chat_member(cid, uid).user.username is not None:
-                    current_username = '@' + lenore.get_chat_member(cid, uid).user.username
+                if Jayne.get_chat_member(cid, uid).user.username is not None:
+                    current_username = '@' + Jayne.get_chat_member(cid, uid).user.username
                     if current_username != db_func.db_service_get_username_from_db(cid, uid):
                         db_func.db_service_update_username_for_user(cid, uid, current_username)
         else:
@@ -1522,7 +1552,7 @@ def service_delete_old_bot_messages():
             for row in current_old_bot_messages:
                 try:
                     db_func.db_service_delete_old_bot_message(row[0])
-                    lenore.delete_message(row[1], row[2])
+                    Jayne.delete_message(row[1], row[2])
                 except Exception as e:
                     exc_logger.exception(e)
 
@@ -1569,7 +1599,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            lenore.polling(none_stop=True)
+            Jayne.polling(none_stop=True)
         except Exception as e:
             exc_logger.exception(e)
             time.sleep(15)
