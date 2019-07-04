@@ -1453,7 +1453,21 @@ def tech_set_echo_all(message):
     try:
         if message.from_user.id == var_config.master_id:
             cid = message.chat.id
-            Jayne.reply_to(message, db_func.db_service_enable_echo_all_for_chat(cid))
+            output = db_func.db_service_enable_echo_all_for_chat(cid)
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output + " for " + message.chat.title))
+            info_logger.debug(output + " for " + message.chat.title)
+    except Exception as e:
+        exc_logger.exception(e)
+
+@Jayne.message_handler(commands=['get_echo_all_chats'])
+def tech_get_echo_all_chats(message):
+    try:
+        if message.from_user.id == var_config.master_id:
+            cid = message.chat.id
+            output = ""
+            for chat in db_func.db_service_get_chats_with_enabled_echo_all():
+                output += "CID: {0}, Title: {1};\n".format(chat[0], chat[1])
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, output))
     except Exception as e:
         exc_logger.exception(e)
 

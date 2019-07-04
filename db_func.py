@@ -908,6 +908,17 @@ def db_service_enable_echo_all_for_chat(cid):
         conn.commit()
         return "Chat echo_all enabled"
 
+def db_service_get_chats_with_enabled_echo_all():
+    global conn
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT cid, chat_name 
+        FROM chats_parameters
+        WHERE echo_all_avialable = '1'""")
+    data = cursor.fetchall()
+    return data
+
+
 def db_service_set_chat_name(cid, chat_name):
     global conn
     cursor = conn.cursor()
