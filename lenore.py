@@ -12,6 +12,7 @@ import time
 import datetime
 from logging.handlers import TimedRotatingFileHandler
 from multiprocessing import Process, freeze_support
+import random
 
 import telebot
 from telebot import apihelper
@@ -177,20 +178,24 @@ def processing_anti_bot(message):
         else:
             incoming_user_name = info_get_current_username(cid, message.new_chat_member.id)
             foo = db_func.db_service_get_antibot_welcome_messages(cid)
-            if foo[1] is not '':
-                if db_func.db_service_check_user_exists(cid, message.new_chat_member.id):
-                    db_func.db_stat_update_user_last_return(cid, message.new_chat_member.id)
-                    welcome_message = foo[3].format(name=incoming_user_name, lb='\n')
-                    db_func.db_service_add_bot_message(cid, Jayne.send_message(cid, welcome_message))
+            temp_restricted = [-1001457973105, -1001444879250]
+            if cid not in temp_restricted:
+                if foo[1] is not '':
+                    if db_func.db_service_check_user_exists(cid, message.new_chat_member.id):
+                        db_func.db_stat_update_user_last_return(cid, message.new_chat_member.id)
+                        welcome_message = foo[3].format(name=incoming_user_name, lb='\n')
+                        db_func.db_service_add_bot_message(cid, Jayne.send_message(cid, welcome_message))
+                    else:
+                        welcome_message = foo[1].format(name=incoming_user_name, lb='\n')
+                        Jayne.restrict_chat_member(cid, message.new_chat_member.id, int(time.time()), False,
+                                                   False,
+                                                   False, False)
+                        approve_data = str(message.new_chat_member.id)
+                        antibot_markup = InlineKeyboardMarkup()
+                        antibot_markup.add(InlineKeyboardButton("🦐", callback_data=approve_data))
+                        Jayne.send_message(cid, welcome_message, reply_markup=antibot_markup)
                 else:
-                    welcome_message = foo[1].format(name=incoming_user_name, lb='\n')
-                    Jayne.restrict_chat_member(cid, message.new_chat_member.id, int(time.time()), False,
-                                               False,
-                                               False, False)
-                    approve_data = str(message.new_chat_member.id)
-                    antibot_markup = InlineKeyboardMarkup()
-                    antibot_markup.add(InlineKeyboardButton("🦐", callback_data=approve_data))
-                    Jayne.send_message(cid, welcome_message, reply_markup=antibot_markup)
+                    db_func.db_stat_add_new_user(cid, message.new_chat_member.id, incoming_user_name)
             else:
                 db_func.db_stat_add_new_user(cid, message.new_chat_member.id, incoming_user_name)
     except Exception as e:
@@ -201,36 +206,36 @@ def processing_anti_bot(message):
 ### Обрабатываем /rate
 ###
 # noinspection PyShadowingNames
-@Jayne.message_handler(content_types=['photo'])
-def all_rate_photo(message):
-    try:
-        uid = message.from_user.id
-        cid = message.chat.id
-        username = info_get_current_username(cid, uid)
-        if db_func.db_service_check_user_exists(cid, uid):
-            db_func.db_stat_update_user_message_count(cid, uid)
-            db_func.db_stat_update_user_message_count(cid, uid, 'photos')
-        else:
-            db_func.db_stat_add_new_user(cid, uid, username)
-            db_func.db_stat_update_user_message_count(cid, uid)
-        if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
-            db_func.db_service_add_bot_message(cid,
-                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
-        else:
-            if message.caption == '/rate':
-                Jayne.delete_message(cid, message.message_id)
-                file_info = Jayne.get_file(message.photo[len(message.photo) - 1].file_id)
-                rate_markup = InlineKeyboardMarkup()
-                rate_markup.row_width = 1
-                callback_upvote = 'upvote_photo_{0}_{1}'.format(0, 0)
-                callback_downvote = 'downvote_photo_{0}_{1}'.format(0, 0)
-                rate_markup.add(InlineKeyboardButton("0 👍", callback_data=callback_upvote),
-                                InlineKeyboardButton("0 👎", callback_data=callback_downvote))
-                photo_caption = '{0} запостил фото на оценку!✨'.format(username)
-                Jayne.send_photo(cid, file_info.file_id, caption=photo_caption, reply_markup=rate_markup)
-    except Exception as e:
-        Jayne.send_message(message.chat.id, e)
-        exc_logger.exception(e)
+# @Jayne.message_handler(content_types=['photo'])
+# def all_rate_photo(message):
+#     try:
+#         uid = message.from_user.id
+#         cid = message.chat.id
+#         username = info_get_current_username(cid, uid)
+#         if db_func.db_service_check_user_exists(cid, uid):
+#             db_func.db_stat_update_user_message_count(cid, uid)
+#             db_func.db_stat_update_user_message_count(cid, uid, 'photos')
+#         else:
+#             db_func.db_stat_add_new_user(cid, uid, username)
+#             db_func.db_stat_update_user_message_count(cid, uid)
+#         if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
+#             db_func.db_service_add_bot_message(cid,
+#                                                Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+#         else:
+#             if message.caption == '/rate':
+#                 Jayne.delete_message(cid, message.message_id)
+#                 file_info = Jayne.get_file(message.photo[len(message.photo) - 1].file_id)
+#                 rate_markup = InlineKeyboardMarkup()
+#                 rate_markup.row_width = 1
+#                 callback_upvote = 'upvote_photo_{0}_{1}'.format(0, 0)
+#                 callback_downvote = 'downvote_photo_{0}_{1}'.format(0, 0)
+#                 rate_markup.add(InlineKeyboardButton("0 👍", callback_data=callback_upvote),
+#                                 InlineKeyboardButton("0 👎", callback_data=callback_downvote))
+#                 photo_caption = '{0} запостил фото на оценку!✨'.format(username)
+#                 Jayne.send_photo(cid, file_info.file_id, caption=photo_caption, reply_markup=rate_markup)
+#     except Exception as e:
+#         Jayne.send_message(message.chat.id, e)
+#         exc_logger.exception(e)
 
 
 @Jayne.callback_query_handler(func=lambda call: True)
@@ -251,105 +256,106 @@ def callback_inline(call):
             Jayne.restrict_chat_member(call.message.chat.id, call.from_user.id, int(time.time()), True, True, True,
                                        True)
 
-        splitted_call = call.data.split('_')
-        if splitted_call[0] == 'upvote' or splitted_call[0] == 'downvote':
-            mid = call.message.message_id
-            cid = call.message.chat.id
-            uid = call.from_user.id
-            username = info_get_current_username(cid, uid)
-            if not db_func.db_service_check_user_exists(cid, uid):
-                db_func.db_stat_add_new_user(cid, uid, username)
-
-            report_call = int(splitted_call[2])
-            downvote = int(splitted_call[3])
-
-            photo_author = call.message.caption.split(' ')[0]
-
-            list_of_voted_users = call.message.caption.split('✨')
-
-            currently_voting_user = info_get_current_username(cid, uid)
-            voted_users = list_of_voted_users[1]
-            if currently_voting_user not in voted_users:
-                if splitted_call[0] == 'upvote':
-                    report_markup = InlineKeyboardMarkup()
-                    report_markup.row_width = 1
-                    callback_upvote = 'upvote_photo_{0}_{1}'.format(str(report_call + 1), downvote)
-                    upvote_caption = "{0} 👍".format(report_call + 1)
-
-                    callback_downvote = 'downvote_photo_{0}_{1}'.format(str(report_call + 1), downvote)
-                    downvote_caption = "{0} 👎".format(downvote)
-
-                    if len(voted_users) > 0:
-                        voted_users += ', ' + currently_voting_user
-                    else:
-                        voted_users += 'Проголосовали: ' + currently_voting_user
-
-                    report_markup.add(
-                        InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
-                        InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
-                    Jayne.edit_message_caption(
-                        '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
-                        call.message.chat.id, call.message.message_id)
-                    Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=report_markup)
-                    Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
-
-                elif splitted_call[0] == 'downvote':
-                    downvoted_rate_markup = InlineKeyboardMarkup()
-                    downvoted_rate_markup.row_width = 1
-                    callback_upvote = 'upvote_photo_{0}_{1}'.format(report_call, str(downvote + 1))
-                    upvote_caption = "{0} 👍".format(report_call)
-
-                    callback_downvote = 'downvote_photo_{0}_{1}'.format(report_call, str(downvote + 1))
-                    downvote_caption = "{0} 👎".format(downvote + 1)
-
-                    if len(voted_users) > 0:
-                        voted_users += ', ' + currently_voting_user
-                    else:
-                        voted_users += 'Проголосовали: ' + currently_voting_user
-
-                    downvoted_rate_markup.add(
-                        InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
-                        InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
-
-                    Jayne.edit_message_caption(
-                        '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
-                        call.message.chat.id, call.message.message_id)
-                    Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=downvoted_rate_markup)
-                    Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Downvoted")
-            else:
-                Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Ты уже проголосовал!")
-
-        if splitted_call[0] == 'report':
-            mid = call.message.message_id
-            cid = call.message.chat.id
-            uid = call.from_user.id
-            username = info_get_current_username(cid, uid)
-            if not db_func.db_service_check_user_exists(cid, uid):
-                db_func.db_stat_add_new_user(cid, uid, username)
-
-            report_call = int(splitted_call[2])
-            list_of_voted_users = call.message.text.split(':')
-            currently_voting_user = info_get_current_username(cid, uid)
-            voted_users = list_of_voted_users[1]
-            if currently_voting_user not in voted_users:
-                report_markup = InlineKeyboardMarkup()
-                report_markup.row_width = 1
-                callback_upvote = 'report_call_{0}'.format(str(report_call + 1))
-                if len(voted_users) > 0:
-                    if len(voted_users) > 0:
-                        voted_users += ', ' + currently_voting_user
-                    else:
-                        voted_users += 'Cчитают, что это сообщение нарушает правила: ' + currently_voting_user
-                    report_markup.add(
-                        InlineKeyboardButton(voted_users, callback_data=callback_upvote))
-                    Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=report_markup)
-                    Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
-                if len(voted_users) > 7:
-                    Jayne.edit_message_text("Модераторы вызваны.", call.message.chat.id, mid)
-                    Jayne.send_message(var_config.service_get_chat_forwarding(cid), 'В чате {0} происходит что-то, требущее внимания модераторов!'.format(call.message.chat.title))
-            else:
-                Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False,
-                                            text="Ты уже проголосовал!")
+        # splitted_call = call.data.split('_')
+        # if splitted_call[0] == 'upvote' or splitted_call[0] == 'downvote':
+        #     mid = call.message.message_id
+        #     cid = call.message.chat.id
+        #     uid = call.from_user.id
+        #     username = info_get_current_username(cid, uid)
+        #     if not db_func.db_service_check_user_exists(cid, uid):
+        #         db_func.db_stat_add_new_user(cid, uid, username)
+        #
+        #     report_call = int(splitted_call[2])
+        #     downvote = int(splitted_call[3])
+        #
+        #     photo_author = call.message.caption.split(' ')[0]
+        #
+        #     list_of_voted_users = call.message.caption.split('✨')
+        #
+        #     currently_voting_user = info_get_current_username(cid, uid)
+        #     voted_users = list_of_voted_users[1]
+        #     if currently_voting_user not in voted_users:
+        #         if splitted_call[0] == 'upvote':
+        #             report_markup = InlineKeyboardMarkup()
+        #             report_markup.row_width = 1
+        #             callback_upvote = 'upvote_photo_{0}_{1}'.format(str(report_call + 1), downvote)
+        #             upvote_caption = "{0} 👍".format(report_call + 1)
+        #
+        #             callback_downvote = 'downvote_photo_{0}_{1}'.format(str(report_call + 1), downvote)
+        #             downvote_caption = "{0} 👎".format(downvote)
+        #
+        #             if len(voted_users) > 0:
+        #                 voted_users += ', ' + currently_voting_user
+        #             else:
+        #                 voted_users += 'Проголосовали: ' + currently_voting_user
+        #
+        #             report_markup.add(
+        #                 InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
+        #                 InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
+        #             Jayne.edit_message_caption(
+        #                 '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
+        #                 call.message.chat.id, call.message.message_id)
+        #             Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=report_markup)
+        #             Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
+        #
+        #         elif splitted_call[0] == 'downvote':
+        #             downvoted_rate_markup = InlineKeyboardMarkup()
+        #             downvoted_rate_markup.row_width = 1
+        #             callback_upvote = 'upvote_photo_{0}_{1}'.format(report_call, str(downvote + 1))
+        #             upvote_caption = "{0} 👍".format(report_call)
+        #
+        #             callback_downvote = 'downvote_photo_{0}_{1}'.format(report_call, str(downvote + 1))
+        #             downvote_caption = "{0} 👎".format(downvote + 1)
+        #
+        #             if len(voted_users) > 0:
+        #                 voted_users += ', ' + currently_voting_user
+        #             else:
+        #                 voted_users += 'Проголосовали: ' + currently_voting_user
+        #
+        #             downvoted_rate_markup.add(
+        #                 InlineKeyboardButton(upvote_caption, callback_data=callback_upvote),
+        #                 InlineKeyboardButton(downvote_caption, callback_data=callback_downvote))
+        #
+        #             Jayne.edit_message_caption(
+        #                 '{0} запостил фото на оценку!✨ {1}'.format(photo_author, voted_users),
+        #                 call.message.chat.id, call.message.message_id)
+        #             Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=downvoted_rate_markup)
+        #             Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Downvoted")
+        #     else:
+        #         Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Ты уже проголосовал!")
+        #
+        # if splitted_call[0] == 'report':
+        #     mid = call.message.message_id
+        #     cid = call.message.chat.id
+        #     uid = call.from_user.id
+        #     username = info_get_current_username(cid, uid)
+        #     if not db_func.db_service_check_user_exists(cid, uid):
+        #         db_func.db_stat_add_new_user(cid, uid, username)
+        #
+        #     report_call = int(splitted_call[2])
+        #     list_of_voted_users = call.message.text.split(':')
+        #     currently_voting_user = info_get_current_username(cid, uid)
+        #     voted_users = list_of_voted_users[1]
+        #     if currently_voting_user not in voted_users:
+        #         report_markup = InlineKeyboardMarkup()
+        #         report_markup.row_width = 1
+        #         callback_upvote = 'report_call_{0}'.format(str(report_call + 1))
+        #         if len(voted_users) > 7:
+        #             Jayne.edit_message_text("Модераторы вызваны.", call.message.chat.id, mid)
+        #             Jayne.send_message(var_config.service_get_chat_forwarding(cid),
+        #                                'В чате {0} происходит что-то, требущее внимания модераторов!'.format(
+        #                                    call.message.chat.title))
+        #         elif len(voted_users) > 0:
+        #             voted_users += ', ' + currently_voting_user
+        #         else:
+        #             voted_users += 'Cчитают, что это сообщение нарушает правила: ' + currently_voting_user
+        #         report_markup.add(
+        #             InlineKeyboardButton(voted_users, callback_data=callback_upvote))
+        #         Jayne.edit_message_reply_markup(call.message.chat.id, mid, reply_markup=report_markup)
+        #         Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False, text="Upvoted")
+        #     else:
+        #         Jayne.answer_callback_query(callback_query_id=call.id, show_alert=False,
+        #                                     text="Ты уже проголосовал!")
 
     except Exception as e:
         Jayne.send_message(call.message.chat.id, e)
@@ -485,6 +491,50 @@ def all_me_action(message):
         Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
+@Jayne.message_handler(commands=['roll'])
+def all_me_action(message):
+    try:
+        cid = message.chat.id
+        uid = message.from_user.id
+        if not db_func.db_service_check_user_exists(cid, uid):
+            db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
+
+        if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
+            db_func.db_service_add_bot_message(cid,
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+        else:
+            user_from = info_get_current_username(cid, uid)
+            me_action_text = user_from + ' rolled: ' + str(random.randint(1,100))
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, me_action_text))
+
+    except Exception as e:
+        Jayne.send_message(message.chat.id, e)
+        exc_logger.exception(e)
+
+@Jayne.message_handler(commands=['warp'])
+def all_warp(message):
+    try:
+        cid = message.chat.id
+        uid = message.from_user.id
+        if not db_func.db_service_check_user_exists(cid, uid):
+            db_func.db_stat_add_new_user(cid, uid, info_get_current_username(cid, uid))
+
+        if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
+            db_func.db_service_add_bot_message(cid,
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+        else:
+            db_func.db_stat_update_user_command_count(cid, uid, 'me')
+
+            Jayne.delete_message(cid, message.message_id)
+            user_from = info_get_current_username(cid, uid)
+            me_action_text = user_from + ' derping around... FOR TEH EMPRAH'
+            Jayne.send_message(cid, me_action_text)
+
+
+
+    except Exception as e:
+        Jayne.send_message(message.chat.id, e)
+        exc_logger.exception(e)
 
 @Jayne.message_handler(commands=['topmsg'])
 def all_topmsg(message):
@@ -577,51 +627,51 @@ def all_topmonthlymsg(message):
         exc_logger.exception(e)
 
 
-@Jayne.message_handler(commands=['report'])
-def all_report(message):
-    allowed = [-1001032838103, -1001085305161, -1001444879250, -1001457973105, -1001175459209, -1001295499832, -1001199558619]
-    try:
-        cid = message.chat.id
-        if cid in allowed:
-            uid = message.from_user.id
-            mid = message.message_id
+# @Jayne.message_handler(commands=['report'])
+# def all_report(message):
+#     allowed = [-1001032838103, -1001085305161, -1001444879250, -1001457973105, -1001175459209, -1001295499832,
+#                -1001199558619]
+#     try:
+#         cid = message.chat.id
+#         if cid in allowed:
+#             uid = message.from_user.id
+#             mid = message.message_id
+#
+#             username = info_get_current_username(cid, uid)
+#             if db_func.db_service_check_user_exists(cid, uid):
+#                 db_func.db_stat_update_user_message_count(cid, uid)
+#                 db_func.db_stat_update_user_message_count(cid, uid, 'photos')
+#             else:
+#                 db_func.db_stat_add_new_user(cid, uid, username)
+#                 db_func.db_stat_update_user_message_count(cid, uid)
+#             if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
+#                 db_func.db_service_add_bot_message(cid,
+#                                                    Jayne.reply_to(message,
+#                                                                   "I'm sorry Dave, I'm afraid I can't do that."))
+#             else:
+#                 if message.reply_to_message is None:
+#                     db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
+#                                                                            'Команду возможно использовать только ответом на сообщение!'))
+#                 else:
+#                     report_markup = InlineKeyboardMarkup()
+#                     report_markup.row_width = 1
+#                     report_callback = 'report_call_{0}'.format(0)
+#                     report_markup.add(InlineKeyboardButton("Поддерживаю", callback_data=report_callback))
+#                     report_text = 'Это сообщение как-то нарушает правила? Если согласится больше 6 человек, будет инициировано разбирательство! Жалобу подал: {0}'.format(
+#                         username)
+#                     Jayne.reply_to(message, report_text, reply_markup=report_markup)
+#         else:
+#             db_func.db_service_add_bot_message(cid,
+#                                                Jayne.reply_to(message,
+#                                                               "К сожалению для этого чата команда отключена."))
+#     except Exception as e:
+#         Jayne.send_message(message.chat.id, e)
+#         exc_logger.exception(e)
 
-            username = info_get_current_username(cid, uid)
-            if db_func.db_service_check_user_exists(cid, uid):
-                db_func.db_stat_update_user_message_count(cid, uid)
-                db_func.db_stat_update_user_message_count(cid, uid, 'photos')
-            else:
-                db_func.db_stat_add_new_user(cid, uid, username)
-                db_func.db_stat_update_user_message_count(cid, uid)
-            if not db_func.db_service_check_user_have_rights(cid, uid, 'actions'):
-                db_func.db_service_add_bot_message(cid,
-                                                   Jayne.reply_to(message,
-                                                                  "I'm sorry Dave, I'm afraid I can't do that."))
-            else:
-                if message.reply_to_message is None:
-                    db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
-                                                                           'Команду возможно использовать только ответом на сообщение!'))
-                else:
-                    report_markup = InlineKeyboardMarkup()
-                    report_markup.row_width = 1
-                    report_callback = 'report_call_{0}'.format(0)
-                    report_markup.add(InlineKeyboardButton("Поддерживаю", callback_data=report_callback))
-                    report_text = 'Это сообщение как-то нарушает правила? Если согласится больше 6 человек, будет инициировано разбирательство! Жалобу подал: {0}'.format(
-                        username)
-                    Jayne.reply_to(message, report_text, reply_markup=report_markup)
-        else:
-            db_func.db_service_add_bot_message(cid,
-                                               Jayne.reply_to(message,
-                                                              "К сожалению для этого чата команда отключена."))
-    except Exception as e:
-        Jayne.send_message(message.chat.id, e)
-        exc_logger.exception(e)
 
-
-@Jayne.message_handler(commands=['lenorehelp'])
-def all_lenorehelp(message):
+@Jayne.message_handler(commands=['jaynehelp'])
+def all_jaynehelp(message):
     help_text = """Команды бота:
-/report - жалоба на сообщение (реплаем);
 /userinfo - ответом на сообщение сообщает статистику для автора сообщения в текущем чате, при использовании без реплая - статистику использовавшего;
 /me something - бот выводит сообщение вида @твой юзернейм something;
 /slap кто-то - бот выводит сообщение "<твой ник> slaps <кто-то> around a bit with a large trout";
@@ -629,15 +679,14 @@ def all_lenorehelp(message):
 /topweeklymsg - топ-5 флудеров за неделю;
 /topmonthlymsg - топ-5 флудеров за месяц;
 /topdailymsg - топ-5 флудеров за день;
-/rate - оценка фото, если написать это в комментарии к отправленному фото, только одно за раз;
 /msk_fur - ссылка на чат "Пушистая Москва";
 /afterdark - ссылка на afterdark-чат "Пушистой Москвы" (18+) (работает только из основного чата);
 /furrygamers - cсылка на Furry gamers [RU] [18+];
 /vapefur - ссылка на #Vaporspace (SFW) (RU);
 /furcoding - ссылка на furry > /dev/null (чатик для русскоязычных фуррей-программистов);
-/eww - гифка eww (реплаем или просто так), доступ на использование просить у админов;
-/usuka - стикер "ъуъ съука" (реплаем или просто так), доступ на использование просить у админов;
-/wtfisgoingon - мем с Макэвоем "Что происходит вообще" (реплаем или просто так), доступ на использование просить у админов"""
+/eww - гифка eww (реплаем или просто так);
+/usuka - стикер "ъуъ съука" (реплаем или просто так);
+/wtfisgoingon - мем с Макэвоем "Что происходит вообще" (реплаем или просто так)"""
 
     try:
         cid = message.chat.id  # ид чата
@@ -692,7 +741,7 @@ def link_afterdark(message):
             if message.chat.id in available_chats:
                 db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                        'Ссылка на afterdark-чат Пушистой Москвы. Внимание, чат 18+!: \n'
-                                                                       'https://t.me/joinchat/AX0jxAwS6vipAuCUL0ickw'))
+                                                                       'https://t.me/joinchat/Kh_ua1bm53GlapkWC9BFWQ'))
             else:
                 db_func.db_service_add_bot_message(cid, Jayne.reply_to(message,
                                                                        'Прошу прощения, запрос этой ссылки работает только из основного чата ПМ'))
@@ -704,14 +753,14 @@ def link_afterdark(message):
         exc_logger.exception(e)
 
 
-@Jayne.message_handler(commands=['furrygamers'])
+@Jayne.message_handler(commands=['gamers'])
 def link_furrygamers(message):
     try:
         cid = message.chat.id
         if message.chat.id not in var_config.restricted_chats_for_links:
             db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на Furry gamers [RU] [18+]: \n'
                                                                             'https://t.me/Furry_GS'))
-            info_logger.critical("{0} in {1} requests bot link".format(message.from_user.first_name, cid))
+            info_logger.critical("{0} in {1} requests bot link furrygamers".format(message.from_user.first_name, cid))
         else:
             db_func.db_service_add_bot_message(cid,
                                                Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
@@ -719,8 +768,37 @@ def link_furrygamers(message):
         Jayne.send_message(message.chat.id, e)
         exc_logger.exception(e)
 
+@Jayne.message_handler(commands=['fitness'])
+def link_fur_fitness(message):
+    try:
+        cid = message.chat.id
+        if message.chat.id not in var_config.restricted_chats_for_links:
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на "Пушистая Москва - фитоняшек чат": \n'
+                                                                            'https://t.me/msk_fur_fitness'))
+            info_logger.critical("{0} in {1} requests bot link fur_fitness".format(message.from_user.first_name, cid))
+        else:
+            db_func.db_service_add_bot_message(cid,
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+    except Exception as e:
+        Jayne.send_message(message.chat.id, e)
+        exc_logger.exception(e)
 
-@Jayne.message_handler(commands=['msk_fur'])
+@Jayne.message_handler(commands=['cooking'])
+def link_fur_cooking(message):
+    try:
+        cid = message.chat.id
+        if message.chat.id not in var_config.restricted_chats_for_links:
+            db_func.db_service_add_bot_message(cid, Jayne.reply_to(message, 'Ссылка на "Пушистая Москва - кулинаров чат": \n'
+                                                                            'https://t.me/msk_fur_cooking'))
+            info_logger.critical("{0} in {1} requests bot link fur_cooking".format(message.from_user.first_name, cid))
+        else:
+            db_func.db_service_add_bot_message(cid,
+                                               Jayne.reply_to(message, "I'm sorry Dave, I'm afraid I can't do that."))
+    except Exception as e:
+        Jayne.send_message(message.chat.id, e)
+        exc_logger.exception(e)
+
+@Jayne.message_handler(commands=['msk'])
 def link_msk_fur(message):
     try:
         cid = message.chat.id
@@ -735,7 +813,7 @@ def link_msk_fur(message):
         exc_logger.exception(e)
 
 
-@Jayne.message_handler(commands=['vapefur'])
+@Jayne.message_handler(commands=['vape'])
 def link_vapefur(message):
     try:
         cid = message.chat.id
@@ -751,7 +829,7 @@ def link_vapefur(message):
 
 
 # furry > /dev/null
-@Jayne.message_handler(commands=['furcoding'])
+@Jayne.message_handler(commands=['coding'])
 def link_furrydevnull(message):
     try:
         cid = message.chat.id
@@ -1474,7 +1552,9 @@ def tech_get_tech(message):
                 uid = message.from_user.id
             else:
                 uid = message.reply_to_message.from_user.id
-            infostring = "UID: {0}\nCID: {1}\n".format(uid, message.chat.id)
+            infostring = "UID: {0}\nCID: {1}".format(uid, message.chat.id)
+            # foo = Jayne.export_chat_invite_link(cid)
+            # infostring = "UID: {0}\nCID: {1}\n{2}".format(uid, message.chat.id, foo)
             db_func.db_service_add_bot_message(cid, Jayne.send_message(cid, infostring))
     except Exception as e:
         Jayne.send_message(message.chat.id, e)
@@ -1572,7 +1652,7 @@ def processing_detect_voice(message):
 ### Сбор статистики
 ###
 
-@Jayne.message_handler(content_types=['text'])
+@Jayne.message_handler(content_types=['text', 'photo'])
 def processing_add_stat_info_to_db(message):
     try:
         if message.chat.type != 'private':
@@ -1596,6 +1676,7 @@ def processing_add_stat_info_to_db(message):
         else:
             pass
     except Exception as e:
+        print(e)
         exc_logger.exception(e)
 
 
